@@ -34,6 +34,10 @@ func (req *saveQuestionRequest) toParams(assignmentID uuid.UUID) (store.SaveQues
 	if !validQuestionType(req.Type) {
 		return store.SaveQuestionParams{}, errValidation("Loại câu hỏi không hợp lệ")
 	}
+	explanation := trimmed(req.Explanation)
+	if explanation == "" {
+		return store.SaveQuestionParams{}, errValidation("Vui lòng nhập giải thích cho câu hỏi")
+	}
 	points := req.Points
 	if points <= 0 {
 		points = 1
@@ -45,7 +49,7 @@ func (req *saveQuestionRequest) toParams(assignmentID uuid.UUID) (store.SaveQues
 		Type:         req.Type,
 		Prompt:       prompt,
 		Points:       points,
-		Explanation:  req.Explanation,
+		Explanation:  explanation,
 	}
 
 	if req.Type == models.QuestionEssay {

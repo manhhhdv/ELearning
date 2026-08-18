@@ -310,8 +310,11 @@ function QuestionForm({
       )}
 
       <div className="field">
-        <label>Giải thích {draft.type === 'essay' ? '/ đáp án gợi ý cho người chấm' : '(hiện sau khi chấm xong)'}</label>
-        <textarea value={draft.explanation} onChange={(e) => set('explanation', e.target.value)} />
+        <label>
+          Giải thích {draft.type === 'essay' ? '/ đáp án gợi ý cho người chấm' : '(hiện sau khi chấm xong)'}
+          <span style={{ color: 'var(--c-danger, #dc2626)' }}> *</span>
+        </label>
+        <textarea value={draft.explanation} onChange={(e) => set('explanation', e.target.value)} required />
       </div>
 
       <div className="wrap-gap">

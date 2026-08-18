@@ -1,6 +1,0 @@
-# Cloudflare Pages: proxy /api/* sang backend chạy trong Docker (xem DEPLOY.md).
-# Mã 200 nghĩa là "proxy" (rewrite ở edge), KHÔNG phải redirect 302 — trình duyệt vẫn
-# thấy origin của Pages, không dính CORS, và giữ nguyên cách gọi fetch('/api/...') dạng
-# tương đối đang có trong frontend/src/api/client.ts. Đổi URL bên dưới thành domain
-# backend thật trước khi deploy.
-/api/*  https://api.yourdomain.com/api/:splat  200

@@ -82,13 +82,13 @@ export function ImportQuestionsModal({ nodeId, onClose, onImported }: Props) {
             <li>Mỗi câu là một khối, các khối cách nhau bằng <b>một dòng trống</b>.</li>
             <li>Dòng đầu là đề bài. Đặt mã riêng bằng <code>[C10]</code> ở đầu, điểm bằng <code>[2đ]</code> ở cuối.</li>
             <li>Dòng bắt đầu bằng <code>*</code> là phương án đúng, <code>-</code> là phương án sai.</li>
-            <li>Dòng bắt đầu bằng <code>&gt;</code> là giải thích.</li>
+            <li>Dòng bắt đầu bằng <code>&gt;</code> là giải thích — <b>bắt buộc</b>, mỗi câu cần ít nhất một dòng.</li>
             <li>Khối không có dòng phương án nào sẽ thành <b>câu tự luận</b>.</li>
           </ul>
         ) : (
           <ul className="hint" style={{ paddingLeft: 18, marginTop: 8 }}>
             <li>Chọn vùng trong Excel rồi Ctrl+C, dán thẳng vào ô bên dưới.</li>
-            <li>Thứ tự cột: <b>Mã · Nội dung · Điểm · PA1 · PA2 · PA3 · PA4 · Đáp án đúng · Giải thích</b>.</li>
+            <li>Thứ tự cột: <b>Mã · Nội dung · Điểm · PA1 · PA2 · PA3 · PA4 · Đáp án đúng · Giải thích</b>. Cột <b>Giải thích</b> không được để trống.</li>
             <li>Cột đáp án đúng ghi số thứ tự (<code>1,3</code>) hoặc chữ cái (<code>A,C</code>).</li>
             <li>Để trống hết các cột phương án thì câu đó là <b>tự luận</b>.</li>
             <li>Dòng tiêu đề được bỏ qua tự động.</li>

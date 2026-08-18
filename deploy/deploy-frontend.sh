@@ -1,41 +1,47 @@
 #!/usr/bin/env bash
-# Build và deploy frontend lên Cloudflare Pages bằng wrangler CLI (không cần kết nối Git, dùng khi
-# muốn deploy thủ công hoặc từ CI). Xem DEPLOY.md mục 4.
+# Build và deploy frontend lên Cloudflare bằng wrangler CLI, dạng Worker phục vụ static assets
+# (không phải Pages) — cấu hình ở frontend/wrangler.jsonc, logic proxy /api/* ở
+# frontend/worker/index.js. Xem DEPLOY.md mục 4.
 #
 # Dùng:
-#   deploy/deploy-frontend.sh PROJECT_NAME [--branch BRANCH] [--skip-build]
+#   deploy/deploy-frontend.sh [--env ENV] [--name WORKER_NAME] [--backend-origin URL] [--skip-build]
 #
-# Đăng nhập Cloudflare — chọn một trong hai cách trước khi chạy lần đầu:
+# Đăng nhập Cloudflare — chọn một trong hai cách trước khi dùng lần đầu:
 #   a) `npx wrangler login` một lần (mở trình duyệt xác thực OAuth, lưu session cục bộ ở máy này).
 #   b) Đặt biến môi trường CLOUDFLARE_API_TOKEN (tạo ở Cloudflare dashboard → My Profile → API
-#      Tokens → dùng template "Edit Cloudflare Workers", thêm quyền Pages) và CLOUDFLARE_ACCOUNT_ID
-#      nếu tài khoản có nhiều account — hợp để chạy tự động/CI không cần trình duyệt.
+#      Tokens → dùng template "Edit Cloudflare Workers") và CLOUDFLARE_ACCOUNT_ID nếu tài khoản có
+#      nhiều account — hợp để chạy tự động/CI không cần trình duyệt.
 #
-# --branch      Nhánh deploy tới (mặc định: nhánh hiện tại theo git, hoặc "main" nếu không rõ).
-#               Deploy lên nhánh khác "production branch" của project sẽ ra một Preview URL riêng,
-#               không cập nhật domain production/domain tuỳ chỉnh đã gắn.
-# --skip-build  Bỏ qua bước `npm install`/`npm run build`, dùng thẳng frontend/dist đã build sẵn.
+# --env             Deploy theo môi trường đặt tên trong frontend/wrangler.jsonc (vd "staging").
+#                   Bỏ qua thì deploy cấu hình gốc (top-level) — dùng cho production. Cloudflare tự
+#                   đặt tên Worker "<name>-<env>" trừ khi env đó tự khai "name" riêng.
+# --name            Ghi đè tên Worker (mặc định: theo "name"/env đã chọn trong wrangler.jsonc).
+# --backend-origin  Ghi đè biến BACKEND_ORIGIN lúc deploy thay vì sửa wrangler.jsonc — tiện cho một
+#                   lần deploy thử, không cần thêm environment mới.
+# --skip-build      Bỏ qua bước `npm install`/`npm run build`, dùng thẳng frontend/dist đã build sẵn.
 #
 # Ví dụ:
-#   deploy/deploy-frontend.sh tap-huan                     # deploy bản production
-#   deploy/deploy-frontend.sh tap-huan --branch preview-x  # deploy bản xem trước, có URL riêng
+#   deploy/deploy-frontend.sh                       # production (cấu hình gốc)
+#   deploy/deploy-frontend.sh --env staging         # môi trường "staging" trong wrangler.jsonc
+#   deploy/deploy-frontend.sh --backend-origin https://api-preview.yourdomain.com --name tap-huan-preview
 
 set -euo pipefail
 
 usage() {
-  echo "Dùng: $0 PROJECT_NAME [--branch BRANCH] [--skip-build]" >&2
+  echo "Dùng: $0 [--env ENV] [--name WORKER_NAME] [--backend-origin URL] [--skip-build]" >&2
   exit 1
 }
 
-[ $# -ge 1 ] || usage
-PROJECT_NAME="$1"; shift
-
-BRANCH=""
+ENV_NAME=""
+WORKER_NAME=""
+BACKEND_ORIGIN=""
 SKIP_BUILD=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --branch) BRANCH="$2"; shift 2 ;;
+    --env) ENV_NAME="$2"; shift 2 ;;
+    --name) WORKER_NAME="$2"; shift 2 ;;
+    --backend-origin) BACKEND_ORIGIN="$2"; shift 2 ;;
     --skip-build) SKIP_BUILD=1; shift ;;
     -h|--help) usage ;;
     *) echo "Không hiểu tuỳ chọn: $1" >&2; usage ;;
@@ -58,11 +64,10 @@ if [ ! -f dist/index.html ]; then
   exit 1
 fi
 
-echo "==> Đảm bảo project Pages \"${PROJECT_NAME}\" tồn tại (bỏ qua lỗi nếu đã có sẵn)"
-npx wrangler pages project create "${PROJECT_NAME}" \
-  --production-branch "${BRANCH:-main}" || true
+DEPLOY_ARGS=(deploy)
+[ -n "${ENV_NAME}" ] && DEPLOY_ARGS+=(--env "${ENV_NAME}")
+[ -n "${WORKER_NAME}" ] && DEPLOY_ARGS+=(--name "${WORKER_NAME}")
+[ -n "${BACKEND_ORIGIN}" ] && DEPLOY_ARGS+=(--var "BACKEND_ORIGIN:${BACKEND_ORIGIN}")
 
-echo "==> Deploy frontend/dist lên Cloudflare Pages (project: ${PROJECT_NAME})"
-DEPLOY_ARGS=(pages deploy dist --project-name "${PROJECT_NAME}")
-[ -n "${BRANCH}" ] && DEPLOY_ARGS+=(--branch "${BRANCH}")
+echo "==> Deploy Worker${ENV_NAME:+ (env: ${ENV_NAME})} (assets: frontend/dist, script: frontend/worker/index.js)"
 npx wrangler "${DEPLOY_ARGS[@]}"

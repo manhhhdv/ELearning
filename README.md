@@ -320,7 +320,7 @@ dụng đúng một lần trong một transaction, ghi nhận ở bảng `schema
 
 ## Trước khi đưa lên production
 
-> Hướng dẫn triển khai đầy đủ bằng Docker (backend) + Cloudflare Pages (frontend): xem
+> Hướng dẫn triển khai đầy đủ bằng Docker (backend) + Cloudflare Worker (frontend): xem
 > [DEPLOY.md](DEPLOY.md).
 
 - [ ] Đặt `JWT_SECRET` bằng chuỗi ngẫu nhiên (`openssl rand -base64 48`) — backend từ chối khởi động

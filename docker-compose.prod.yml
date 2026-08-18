@@ -1,5 +1,5 @@
 # Compose file cho production (backend + Postgres, dựng trong Docker trên server riêng).
-# Frontend KHÔNG chạy ở đây — deploy lên Cloudflare Pages, xem DEPLOY.md.
+# Frontend KHÔNG chạy ở đây — deploy lên Cloudflare (Worker phục vụ static assets), xem DEPLOY.md.
 #
 # Dùng chung với .env (ở thư mục gốc, xem .env.example) cho POSTGRES_*
 # và backend/.env.production (xem backend/.env.production.example) cho cấu hình riêng của backend.

@@ -1,18 +1,20 @@
 # Triển khai production
 
 Backend chạy bằng Docker trên một server riêng (VPS, máy nội bộ...). Frontend build tĩnh và
-deploy lên **Cloudflare Pages**, không chạy trong Docker.
+deploy lên Cloudflare dưới dạng **Worker phục vụ static assets** (không phải Pages, không chạy
+trong Docker).
 
 ## Kiến trúc
 
 ```
 Trình duyệt
-   │  https://your-app.pages.dev
+   │  https://tap-huan.<subdomain>.workers.dev  (hoặc custom domain)
    ▼
-Cloudflare Pages (frontend, static)
-   │  fetch('/api/...') — cùng origin với Pages
-   │  → _redirects proxy /api/* sang backend (mã 200 = rewrite, không phải redirect)
-   ▼
+Worker `tap-huan` (frontend/wrangler.jsonc + frontend/worker/index.js)
+   ├─ /api/*  → fetch() sang BACKEND_ORIGIN (proxy thật trong code, chạy trên edge Cloudflare)
+   └─ còn lại → env.ASSETS.fetch() (static files trong frontend/dist, SPA fallback về index.html)
+   │
+   ▼ (chỉ nhánh /api/*)
 https://api.yourdomain.com                       ← Cloudflare Tunnel HOẶC Caddy (TLS)
    │
    ▼
@@ -24,16 +26,17 @@ Container `postgres` (chỉ truy cập nội bộ trong mạng Docker)
 
 Frontend gọi API bằng đường dẫn tương đối `fetch('/api/...')`
 ([client.ts](frontend/src/api/client.ts:32)), không có biến `VITE_API_URL` nào để đổi domain
-đích. Vì vậy khi frontend và backend nằm ở hai domain khác nhau (Cloudflare Pages vs server riêng),
-bắt buộc phải có một lớp proxy `/api/*` ở phía Pages — đó là việc file
-[`frontend/public/_redirects`](frontend/public/_redirects) đã làm sẵn. Xem mục 5.
+đích. Vì frontend và backend nằm ở hai domain khác nhau (Worker vs server riêng), cần một lớp
+proxy `/api/*` đứng cùng origin với frontend — [`frontend/worker/index.js`](frontend/worker/index.js)
+làm việc đó bằng code thật (không phải rule tĩnh), chạy ngay trên edge Cloudflare trước khi tới
+static assets (`run_worker_first` trong `wrangler.jsonc`). Xem mục 5.
 
 ## Chuẩn bị
 
 - Server Linux đã cài **Docker** + **Docker Compose plugin** (`docker compose version`).
 - Một domain cho backend, ví dụ `api.yourdomain.com` (bắt buộc nếu dùng Caddy; Cloudflare Tunnel
   cũng dùng domain này nhưng không cần trỏ DNS thủ công).
-- Tài khoản Cloudflare (miễn phí) để deploy Pages, và Tunnel nếu chọn cách đó.
+- Tài khoản Cloudflare (miễn phí) để deploy Worker, và Tunnel nếu chọn cách đó.
 
 Các file cấu hình đã có sẵn trong repo:
 
@@ -47,8 +50,9 @@ Các file cấu hình đã có sẵn trong repo:
 | [`.env.example`](.env.example) | Biến cho `docker compose` (mật khẩu Postgres, domain, token tunnel) |
 | [`backend/.env.production.example`](backend/.env.production.example) | Biến riêng của backend (JWT, admin, Google OAuth...) |
 | [`deploy/Caddyfile`](deploy/Caddyfile) | Cấu hình Caddy nếu chọn tự xin TLS thay vì Cloudflare Tunnel |
-| [`frontend/public/_redirects`](frontend/public/_redirects) | Cloudflare Pages proxy `/api/*` sang backend |
-| [`deploy/deploy-frontend.sh`](deploy/deploy-frontend.sh) | Build + deploy frontend lên Cloudflare Pages bằng `wrangler` (mục 4b) |
+| [`frontend/wrangler.jsonc`](frontend/wrangler.jsonc) | Cấu hình Worker: tên, assets, biến `BACKEND_ORIGIN`, môi trường staging/production |
+| [`frontend/worker/index.js`](frontend/worker/index.js) | Code Worker: proxy `/api/*`, còn lại phục vụ static assets |
+| [`deploy/deploy-frontend.sh`](deploy/deploy-frontend.sh) | Build + deploy frontend lên Cloudflare bằng `wrangler` (mục 4) |
 
 ---
 
@@ -74,7 +78,8 @@ Sửa `backend/.env.production` (biến riêng của ứng dụng backend, xem c
 | Biến | Ý nghĩa |
 |---|---|
 | `JWT_SECRET` | **Bắt buộc** — sinh bằng `openssl rand -base64 48`. Backend từ chối khởi động nếu để trống khi `APP_ENV=production`. |
-| `FRONTEND_URL`, `ALLOW_ORIGINS` | Domain thật của Cloudflare Pages, ví dụ `https://your-app.pages.dev`. Sai giá trị này thì CORS chặn mọi request từ frontend. |
+| `FRONTEND_URL` | Domain thật của Worker, ví dụ `https://tap-huan.<subdomain>.workers.dev` (hoặc custom domain). Dùng để redirect trình duyệt về đúng frontend sau khi đăng nhập Google — sai giá trị này thì đăng nhập Google xong sẽ redirect nhầm chỗ. |
+| `ALLOW_ORIGINS` | Cùng giá trị domain Worker ở trên. Với kiến trúc proxy qua Worker thì trình duyệt không bao giờ gọi thẳng cross-origin tới backend nữa (Worker proxy hộ ở edge), nên CORS ít khi thực sự bị chặn — vẫn nên đặt đúng để phòng trường hợp gọi API trực tiếp sau này. |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | Tài khoản quản trị được tạo tự động lần chạy đầu tiên (chỉ khi DB chưa có admin nào) |
 | `GOOGLE_REDIRECT_URL` | `https://api.yourdomain.com/api/auth/google/callback` — xem mục 6 |
 
@@ -212,31 +217,10 @@ hạn qua HTTP‑01 miễn cổng 80 còn mở tới server).
 
 ---
 
-## 4. Deploy frontend lên Cloudflare Pages
+## 4. Deploy frontend lên Cloudflare (Worker)
 
-Chọn **một** trong hai cách.
-
-### 4a. Kết nối Git (Cloudflare tự build mỗi lần push)
-
-Trong Cloudflare dashboard → **Workers & Pages → Create → Pages → Connect to Git**, chọn repo, rồi
-cấu hình build:
-
-| Trường | Giá trị |
-|---|---|
-| Framework preset | Vite |
-| Build command | `npm run build` |
-| Build output directory | `dist` |
-| Root directory | `frontend` |
-
-Không cần biến môi trường build nào — frontend không đọc `VITE_API_URL` hay biến tương tự, mọi
-cấu hình API nằm ở `_redirects` (mục 5).
-
-### 4b. Deploy bằng script, không cần connect Git (`wrangler`)
-
-Dùng khi muốn deploy thủ công từ máy mình hoặc từ CI mà không muốn cấp quyền đọc repo cho
-Cloudflare. `wrangler` đã có sẵn trong `frontend/devDependencies`.
-
-Đăng nhập Cloudflare một lần trước khi dùng lần đầu — chọn một trong hai:
+`wrangler` đã có sẵn trong `frontend/devDependencies`. Đăng nhập Cloudflare một lần trước khi dùng
+lần đầu — chọn một trong hai:
 
 ```bash
 cd frontend && npx wrangler login   # mở trình duyệt xác thực OAuth, lưu session cục bộ
@@ -249,38 +233,65 @@ export CLOUDFLARE_API_TOKEN=...      # Cloudflare dashboard → My Profile → A
 export CLOUDFLARE_ACCOUNT_ID=...     # chỉ cần nếu tài khoản có nhiều account
 ```
 
-Rồi build + deploy:
+Sửa `BACKEND_ORIGIN` trong [`frontend/wrangler.jsonc`](frontend/wrangler.jsonc) thành domain backend
+thật (mục 5), rồi build + deploy:
 
 ```bash
-deploy/deploy-frontend.sh tap-huan
+deploy/deploy-frontend.sh
 ```
 
 Script [`deploy/deploy-frontend.sh`](deploy/deploy-frontend.sh) tự `npm install`/`npm run build`
-rồi `wrangler pages deploy dist`, tự tạo project Pages tên `tap-huan` nếu chưa có (đổi tên tuỳ ý —
-chạy `--help` để xem hết tuỳ chọn, gồm `--branch` để deploy bản xem trước có URL riêng và
-`--skip-build` để deploy thẳng `dist/` đã build sẵn).
+rồi `wrangler deploy` — không cần tạo project thủ công như Pages, `wrangler` tự tạo/cập nhật Worker
+theo `name` khai trong `wrangler.jsonc` (mặc định `tap-huan`, đổi tuỳ ý). Chạy `--help` để xem hết
+tuỳ chọn (`--env`, `--name`, `--backend-origin` để ghi đè lúc deploy thay vì sửa file, `--skip-build`).
+
+Sau lần deploy đầu tiên, Worker có ngay domain mặc định dạng
+`https://<name>.<account-subdomain>.workers.dev` — dùng luôn hoặc gắn thêm domain riêng ở
+**Workers & Pages → tên Worker → Settings → Domains & Routes → Add Custom Domain**.
+
+### Nhiều môi trường (staging/production)
+
+`frontend/wrangler.jsonc` có sẵn cấu hình gốc (top-level, dùng cho production) và một môi trường
+`env.staging` với `BACKEND_ORIGIN` riêng trỏ sang backend staging. Deploy môi trường nào dùng lệnh
+đó:
+
+```bash
+deploy/deploy-frontend.sh                # production — cấu hình gốc, Worker "tap-huan"
+deploy/deploy-frontend.sh --env staging  # staging — Worker "tap-huan-staging" (tự thêm hậu tố)
+```
+
+Hai Worker này **độc lập hoàn toàn** (khác tên, khác domain `*.workers.dev`, khác `BACKEND_ORIGIN`),
+nên deploy thử ở staging không ảnh hưởng production.
+
+Lưu ý riêng của Wrangler: `main`, `compatibility_date`, `assets` (cấu hình static assets) tự động
+kế thừa từ cấu hình gốc xuống mọi `env.*`, nhưng **`vars` (gồm `BACKEND_ORIGIN`) thì không** — mỗi
+environment phải tự khai lại toàn bộ `vars` của nó. Thêm môi trường mới (vd `preview`) thì copy
+nguyên khối `staging` trong `wrangler.jsonc`, đổi tên khối và giá trị `BACKEND_ORIGIN`.
 
 ---
 
-## 5. Nối frontend ↔ backend (`_redirects`)
+## 5. Nối frontend ↔ backend
 
-Sửa domain trong [`frontend/public/_redirects`](frontend/public/_redirects) thành domain backend
-thật rồi commit:
+Không cần file `_redirects` như Cloudflare Pages — [`frontend/worker/index.js`](frontend/worker/index.js)
+tự proxy bằng code thật:
 
+```js
+if (url.pathname.startsWith('/api/')) {
+  const target = new URL(url.pathname + url.search, env.BACKEND_ORIGIN)
+  return fetch(new Request(target, request))
+}
+return env.ASSETS.fetch(request)
 ```
-/api/*  https://api.yourdomain.com/api/:splat  200
-```
 
-Mã **200** báo Cloudflare Pages đây là **proxy** (rewrite ở edge), không phải redirect — trình
-duyệt vẫn thấy origin của Pages nên `fetch('/api/...')` trong
-[`client.ts`](frontend/src/api/client.ts:32) chạy đúng mà không cần sửa code, và không dính CORS
-vì trình duyệt không thấy có cross-origin request nào. Vite copy nguyên file trong `public/` vào
-gốc thư mục build, Cloudflare Pages tự nhận `_redirects` ở đó.
+`run_worker_first: ["/api/*"]` trong `wrangler.jsonc` đảm bảo mọi request `/api/*` luôn chạy qua
+đoạn code này trước, không bị assets binding trả 404. Trình duyệt chỉ thấy origin của Worker —
+Cloudflare fetch tới `BACKEND_ORIGIN` xảy ra server-side ở edge, không phải browser gọi cross-origin
+nên không dính CORS, và không có giới hạn dung lượng/thời gian như trick `_redirects` proxy 200 của
+Pages.
 
-> Lưu ý: Cloudflare Pages giới hạn dung lượng và thời gian cho request đi qua proxy này (phù hợp
-> cho API JSON thông thường, không phù hợp để proxy tải file lớn). Nếu sau này cần bỏ qua giới hạn
-> này, có thể đổi kiến trúc sang gọi thẳng domain backend (cần sửa `client.ts` để dùng URL tuyệt đối
-> và bật CORS qua `ALLOW_ORIGINS` — backend đã hỗ trợ sẵn CORS, có thể làm việc này sau nếu cần).
+Chỉ cần sửa một chỗ khi đổi domain backend: `BACKEND_ORIGIN` trong
+[`frontend/wrangler.jsonc`](frontend/wrangler.jsonc) rồi deploy lại — không cần sửa
+`frontend/src/api/client.ts`, code frontend vẫn gọi `fetch('/api/...')` tương đối như cũ.
 
 ---
 
@@ -350,12 +361,12 @@ riêng cho Docker:
 
 - [ ] `POSTGRES_PASSWORD` trong `.env` đã đổi khỏi giá trị mặc định.
 - [ ] `JWT_SECRET` trong `backend/.env.production` đã đặt (sinh bằng `openssl rand -base64 48`).
-- [ ] `ALLOW_ORIGINS` / `FRONTEND_URL` trỏ đúng domain Cloudflare Pages thật (kể cả domain tuỳ
-      chỉnh nếu có gắn thêm, không chỉ `*.pages.dev`).
+- [ ] `ALLOW_ORIGINS` / `FRONTEND_URL` trỏ đúng domain Worker thật (kể cả custom domain nếu có gắn
+      thêm, không chỉ `*.workers.dev`).
 - [ ] Cổng Postgres **không** được map ra host trong `docker-compose.prod.yml` (mặc định đã đúng).
 - [ ] `GOOGLE_REDIRECT_URL` dùng `https://` và đã khai báo lại trên Google Cloud Console.
 - [ ] Đã chọn và chạy một trong hai overlay (`docker-compose.tunnel.yml` hoặc `docker-compose.proxy.yml`) để backend có TLS.
-- [ ] `frontend/public/_redirects` đã trỏ đúng domain backend thật, không còn `api.yourdomain.com`.
+- [ ] `BACKEND_ORIGIN` trong `frontend/wrangler.jsonc` đã trỏ đúng domain backend thật, không còn `api.yourdomain.com`.
 
 ---
 
@@ -364,7 +375,8 @@ riêng cho Docker:
 | Triệu chứng | Nguyên nhân thường gặp |
 |---|---|
 | Backend thoát ngay lúc khởi động, log báo thiếu `JWT_SECRET` | Chưa điền `JWT_SECRET` trong `backend/.env.production` |
-| Frontend gọi API bị lỗi CORS trong console trình duyệt | `_redirects` sai domain (proxy không chạy) hoặc `ALLOW_ORIGINS` không khớp domain Pages |
+| Frontend gọi `/api/...` bị lỗi/timeout, không thấy request tới backend | `BACKEND_ORIGIN` trong `frontend/wrangler.jsonc` sai domain, hoặc quên deploy lại Worker sau khi sửa |
+| Tải lại trang ở route con (vd `/hoc/...`) bị lỗi thay vì hiện đúng trang | `not_found_handling` trong `wrangler.jsonc` không phải `"single-page-application"`, hoặc deploy nhầm bản assets cũ |
 | Đăng nhập Google báo `redirect_uri_mismatch` | `GOOGLE_REDIRECT_URL` không khớp Authorized redirect URI trên Google Cloud Console |
 | `docker compose up` báo thiếu biến (`variable is not set` / `required variable ... is missing`) | Chưa `cp .env.example .env`, hoặc chạy overlay `proxy`/`tunnel` mà thiếu `DOMAIN`/`CLOUDFLARE_TUNNEL_TOKEN` tương ứng |
 | Caddy không xin được chứng chỉ | Cổng 80 chưa mở ra Internet, hoặc DNS domain đang bật proxy cam Cloudflare (cần chuyển tạm về DNS only) |

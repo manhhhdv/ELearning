@@ -14,8 +14,12 @@
 #   PORT       = 22 (dùng -p 2222 nếu server nghe trên cổng 2222)
 #
 #   --load     sau khi scp xong, SSH vào server và `docker load` luôn image (mặc định: không).
-#   --restart  bao gồm --load, rồi chạy `IMAGE_TAG=<tag> docker compose ... up -d backend` trên
-#              server để chuyển sang phiên bản mới ngay (mặc định: không tự restart production).
+#   --restart  bao gồm --load, rồi chạy `docker compose ... up -d backend` trên server để chuyển
+#              sang phiên bản mới ngay (mặc định: không tự restart production).
+#
+# Mỗi lần chạy, image được gắn cả tag theo thời gian (rollback) lẫn tag `latest` (dùng mặc định) —
+# nhờ vậy mọi lệnh `docker compose ... up -d` sau này trên server, kể cả khi thêm Tunnel/Caddy,
+# đều tự dùng đúng bản mới nhất mà không cần nhớ truyền IMAGE_TAG.
 #
 # Yêu cầu một lần trên server trước khi dùng --restart: đã scp sẵn docker-compose.prod.yml,
 # .env và backend/.env.production vào REMOTE_DIR (xem DEPLOY.md mục 2b).

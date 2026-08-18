@@ -95,6 +95,11 @@ function parseText(raw: string): ParseResult {
       }
     }
 
+    if (!explanation.trim()) {
+      issues.push({ line: startLine, message: 'Thiếu giải thích (dòng bắt đầu bằng >)' })
+      return
+    }
+
     questions.push({
       code,
       type: inferType(filled.length, correct),
@@ -141,6 +146,10 @@ function parseTable(raw: string): ParseResult {
 
     if (!prompt) {
       issues.push({ line, message: 'Thiếu nội dung câu hỏi ở cột thứ 2' })
+      return
+    }
+    if (!explanation.trim()) {
+      issues.push({ line, message: 'Thiếu giải thích ở cột cuối' })
       return
     }
 
@@ -207,10 +216,12 @@ Chọn các bước rửa tay đúng quy trình: [3đ]
 * Làm ướt tay
 * Xoa xà phòng 20 giây
 - Lau tay vào áo
+> Quy trình 6 bước rửa tay của Bộ Y tế bắt đầu bằng làm ướt tay và xoa xà phòng.
 
-Trình bày quy trình xử lý khi phát hiện thực phẩm hết hạn. [3đ]`
+Trình bày quy trình xử lý khi phát hiện thực phẩm hết hạn. [3đ]
+> Cách ly ngay, lập biên bản, báo cáo người phụ trách và tiêu huỷ theo quy định.`
 
 export const SAMPLE_TABLE = `Mã\tNội dung câu hỏi\tĐiểm\tPhương án 1\tPhương án 2\tPhương án 3\tPhương án 4\tĐáp án đúng\tGiải thích
-C10\tNhiệt độ bảo quản lạnh là?\t2\t0–5°C\t10–15°C\t20–25°C\t\t1\tTheo QCVN
-C11\tChọn các bước rửa tay đúng\t3\tLàm ướt tay\tXoa xà phòng\tLau vào áo\t\t1,2\t
-C12\tNêu 3 nguyên tắc bảo quản thực phẩm\t3\t\t\t\t\t\t`
+C10\tNhiệt độ bảo quản lạnh là?\t2\t0–5°C\t10–15°C\t20–25°C\t\t1\tTheo QCVN, ngăn mát giữ 0–5°C
+C11\tChọn các bước rửa tay đúng\t3\tLàm ướt tay\tXoa xà phòng\tLau vào áo\t\t1,2\tQuy trình 6 bước của Bộ Y tế
+C12\tNêu 3 nguyên tắc bảo quản thực phẩm\t3\t\t\t\t\t\tPhải nêu đủ nhiệt độ, thời gian và vệ sinh dụng cụ`

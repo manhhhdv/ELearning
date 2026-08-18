@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import type { TreeNode } from '../api/types'
+import { CONTENT_TYPE_LABEL } from '../api/types'
 import { IconCheck, IconChevron, IconDoc, IconSlide, IconTask, IconVideo } from './icons'
 
 /** Một mục học được: bài học hoặc bài tập, kèm độ sâu để thụt lề. */
@@ -73,9 +74,7 @@ export function itemMeta(node: TreeNode): string {
     const count = node.assignment?.questionCount ?? 0
     return count > 0 ? `Bài tập · ${count} câu hỏi` : 'Bài tập'
   }
-  const kindLabel = {
-    video: 'Video', slide: 'Slide', document: 'Tài liệu', pdf: 'PDF', link: 'Liên kết',
-  }[node.lesson?.contentType ?? 'video']
+  const kindLabel = CONTENT_TYPE_LABEL[node.lesson?.contentType ?? 'video']
   const minutes = node.lesson?.durationMinutes ?? 0
   return minutes > 0 ? `${kindLabel} · ${minutes} phút` : kindLabel
 }
