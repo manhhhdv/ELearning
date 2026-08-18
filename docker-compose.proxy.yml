@@ -1,0 +1,29 @@
+# Overlay: thêm Caddy để tự xin/gia hạn TLS qua Let's Encrypt.
+# Dùng cùng docker-compose.prod.yml:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.proxy.yml up -d --build
+#
+# Yêu cầu: DOMAIN trong .env trỏ DNS-only (tắt proxy cam) thẳng vào IP server, cổng 80/443 mở ra
+# Internet để xác thực ACME HTTP-01. Xem DEPLOY.md mục 3B.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: elearning_proxy_prod
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN:?Thiếu DOMAIN, xem .env.example}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [backend_net]
+
+volumes:
+  caddy_data:
+  caddy_config:

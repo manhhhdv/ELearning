@@ -1,0 +1,8 @@
+# Không đóng gói bí mật hay artefact cục bộ vào build context/image.
+.env
+.env.*
+!.env.production.example
+bin/
+server
+*.test
+tmp/

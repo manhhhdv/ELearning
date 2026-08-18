@@ -1,0 +1,18 @@
+# Overlay: thêm Cloudflare Tunnel — không cần mở cổng nào ra Internet.
+# Dùng cùng docker-compose.prod.yml:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.tunnel.yml up -d --build
+#
+# Yêu cầu: tạo tunnel kiểu Docker trong Cloudflare Zero Trust, thêm Public Hostname trỏ tới
+# service `http://backend:8082`, rồi điền token vào CLOUDFLARE_TUNNEL_TOKEN trong .env.
+# Xem DEPLOY.md mục 3A.
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: elearning_tunnel_prod
+    restart: unless-stopped
+    command: tunnel run --token ${CLOUDFLARE_TUNNEL_TOKEN:?Thiếu CLOUDFLARE_TUNNEL_TOKEN, xem .env.example}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [backend_net]

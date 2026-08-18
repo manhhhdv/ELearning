@@ -1,0 +1,8 @@
+# Caddy tự xin chứng chỉ TLS (Let's Encrypt) cho domain này rồi forward mọi request
+# sang service `backend` trong cùng mạng Docker. Yêu cầu DNS của DOMAIN trỏ A/AAAA
+# thẳng vào IP server này (không bật proxy cam của Cloudflare — DNS only), và cổng
+# 80/443 phải mở ra Internet để xác thực ACME HTTP-01.
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy backend:8082
+}

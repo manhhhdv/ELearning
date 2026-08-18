@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Tập Huấn">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3d94f6"/>
+      <stop offset="1" stop-color="#0c3f9e"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="48" height="48" rx="11" fill="url(#tile)"/>
+
+  <!-- Mũ tốt nghiệp: phần ván phẳng phía trên -->
+  <path d="M24 10.5 42 18.2 24 25.9 6 18.2Z" fill="#fff"/>
+
+  <!-- Thân mũ ôm đầu, mở rộng dần xuống dưới -->
+  <path d="M14.4 21.3v6.1c0 .72.35 1.4.95 1.82C17.9 30.94 20.86 31.8 24 31.8s6.1-.86 8.65-2.57c.6-.42.95-1.1.95-1.82v-6.1L24 27.6Z"
+        fill="#cfe4ff"/>
+
+  <!-- Dây tua rủ xuống từ mép phải -->
+  <path d="M39.4 19.3v8.4" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>
+  <circle cx="39.4" cy="30.2" r="2.4" fill="#9ecbff"/>
+</svg>

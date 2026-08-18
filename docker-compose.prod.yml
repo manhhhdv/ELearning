@@ -1,0 +1,79 @@
+# Compose file cho production (backend + Postgres, dựng trong Docker trên server riêng).
+# Frontend KHÔNG chạy ở đây — deploy lên Cloudflare Pages, xem DEPLOY.md.
+#
+# Dùng chung với .env (ở thư mục gốc, xem .env.example) cho POSTGRES_*
+# và backend/.env.production (xem backend/.env.production.example) cho cấu hình riêng của backend.
+#
+# `name:` bên dưới tách hẳn network/volume khỏi docker-compose.yml (Postgres cho môi trường dev) —
+# hai bộ có thể chạy song song trên cùng máy mà không đụng nhau.
+#
+# Chạy nền tối thiểu, build ngay trên server (đứng sau proxy/tunnel có sẵn ngoài Docker):
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Hoặc build image ở máy khác rồi scp/`docker load` lên server (xem deploy/build-and-ship.sh và
+# DEPLOY.md mục 2b) — không cần mã nguồn `backend/` trên server, chỉ cần image đã nạp sẵn:
+#   IMAGE_TAG=<tag> docker compose -f docker-compose.prod.yml up -d
+#
+# Thêm Cloudflare Tunnel để không cần mở cổng nào ra Internet (khuyến nghị, xem DEPLOY.md mục 3A):
+#   docker compose -f docker-compose.prod.yml -f docker-compose.tunnel.yml up -d
+#
+# Hoặc thêm Caddy để tự xin TLS qua Let's Encrypt (xem DEPLOY.md mục 3B):
+#   docker compose -f docker-compose.prod.yml -f docker-compose.proxy.yml up -d
+
+name: elearning-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: elearning_pg_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-elearning}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Thiếu POSTGRES_PASSWORD, xem .env.example}
+      POSTGRES_DB: ${POSTGRES_DB:-elearning}
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - elearning_pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-elearning} -d ${POSTGRES_DB:-elearning}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [backend_net]
+    # Không expose ra host: chỉ backend trong cùng mạng Docker mới truy cập được.
+    # Cần vào thẳng Postgres thì dùng: docker compose -f docker-compose.prod.yml exec postgres psql -U elearning
+
+  backend:
+    build:
+      context: ./backend
+    # IMAGE_TAG chọn phiên bản cụ thể khi chạy bằng image build sẵn nạp qua `docker load`
+    # (xem deploy/build-and-ship.sh) — cho phép rollback bằng cách đổi tag rồi `up -d`, không
+    # cần rebuild. Khi build ngay trên server bằng `--build` thì để mặc định `latest` là đủ.
+    image: elearning-backend:${IMAGE_TAG:-latest}
+    container_name: elearning_api_prod
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - backend/.env.production
+    environment:
+      # Ghi đè DATABASE_URL trong backend/.env.production: trỏ vào service `postgres` nội bộ
+      # thay vì localhost, dùng đúng mật khẩu đã đặt ở .env.
+      DATABASE_URL: postgres://${POSTGRES_USER:-elearning}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-elearning}?sslmode=disable
+    networks: [backend_net]
+    ports:
+      # Chỉ mở ra localhost của server — proxy/tunnel ở trên sẽ forward vào đây.
+      # Nếu server đã có Nginx/Caddy riêng ngoài Docker, đổi thành "8082:8082" nếu cần bind mọi interface.
+      - "127.0.0.1:8082:8082"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+networks:
+  backend_net:
+
+volumes:
+  elearning_pgdata_prod:
