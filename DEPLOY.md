@@ -48,6 +48,7 @@ Các file cấu hình đã có sẵn trong repo:
 | [`backend/.env.production.example`](backend/.env.production.example) | Biến riêng của backend (JWT, admin, Google OAuth...) |
 | [`deploy/Caddyfile`](deploy/Caddyfile) | Cấu hình Caddy nếu chọn tự xin TLS thay vì Cloudflare Tunnel |
 | [`frontend/public/_redirects`](frontend/public/_redirects) | Cloudflare Pages proxy `/api/*` sang backend |
+| [`deploy/deploy-frontend.sh`](deploy/deploy-frontend.sh) | Build + deploy frontend lên Cloudflare Pages bằng `wrangler` (mục 4b) |
 
 ---
 
@@ -170,6 +171,32 @@ docker compose -f docker-compose.prod.yml -f docker-compose.tunnel.yml up -d
 `api.yourdomain.com` sẽ hoạt động ngay, không cần trỏ DNS thủ công (Cloudflare tự tạo bản ghi khi
 thêm Public Hostname).
 
+> **Toàn bộ quy trình khi kết hợp Tunnel với cách build-scp (2b)** — chạy từ máy build, không cần
+> SSH tay vào server:
+>
+> ```bash
+> # 1. Một lần duy nhất: tạo REMOTE_DIR trên server rồi scp 3 file cấu hình vào đó
+> ssh user@server "mkdir -p ~/elearning"
+> scp docker-compose.prod.yml docker-compose.tunnel.yml user@server:~/elearning/
+> scp .env backend/.env.production user@server:~/elearning/   # đã điền CLOUDFLARE_TUNNEL_TOKEN, JWT_SECRET...
+>
+> # 2. Build + scp + load + chạy backend/Postgres
+> ./deploy/build-and-ship.sh user@server --restart
+>
+> # 3. Một lần duy nhất: bật thêm container cloudflared (không đụng backend/Postgres đang chạy)
+> ssh user@server "cd elearning && docker compose -f docker-compose.prod.yml -f docker-compose.tunnel.yml up -d"
+>
+> # 4. Kiểm tra
+> curl https://api.yourdomain.com/api/health
+> ssh user@server "docker logs --tail 50 elearning_tunnel_prod"
+> ```
+>
+> Thêm `-p PORT` vào cả `build-and-ship.sh` lẫn các lệnh `ssh`/`scp` phía trên nếu server dùng cổng
+> SSH khác 22.
+>
+> Từ lần deploy phiên bản mới trở đi, **chỉ cần chạy lại bước 2** (`build-and-ship.sh ... --restart`)
+> — cloudflared đã có `restart: unless-stopped` nên tiếp tục chạy xuyên suốt, không cần bật lại.
+
 ### Cách B — Caddy tự xin TLS (Let's Encrypt)
 
 Dùng khi không muốn phụ thuộc Cloudflare Tunnel — cần mở cổng 80/443 và domain trỏ **DNS only**
@@ -187,6 +214,10 @@ hạn qua HTTP‑01 miễn cổng 80 còn mở tới server).
 
 ## 4. Deploy frontend lên Cloudflare Pages
 
+Chọn **một** trong hai cách.
+
+### 4a. Kết nối Git (Cloudflare tự build mỗi lần push)
+
 Trong Cloudflare dashboard → **Workers & Pages → Create → Pages → Connect to Git**, chọn repo, rồi
 cấu hình build:
 
@@ -199,6 +230,35 @@ cấu hình build:
 
 Không cần biến môi trường build nào — frontend không đọc `VITE_API_URL` hay biến tương tự, mọi
 cấu hình API nằm ở `_redirects` (mục 5).
+
+### 4b. Deploy bằng script, không cần connect Git (`wrangler`)
+
+Dùng khi muốn deploy thủ công từ máy mình hoặc từ CI mà không muốn cấp quyền đọc repo cho
+Cloudflare. `wrangler` đã có sẵn trong `frontend/devDependencies`.
+
+Đăng nhập Cloudflare một lần trước khi dùng lần đầu — chọn một trong hai:
+
+```bash
+cd frontend && npx wrangler login   # mở trình duyệt xác thực OAuth, lưu session cục bộ
+```
+
+hoặc đặt biến môi trường (hợp cho CI, không cần trình duyệt):
+
+```bash
+export CLOUDFLARE_API_TOKEN=...      # Cloudflare dashboard → My Profile → API Tokens
+export CLOUDFLARE_ACCOUNT_ID=...     # chỉ cần nếu tài khoản có nhiều account
+```
+
+Rồi build + deploy:
+
+```bash
+deploy/deploy-frontend.sh tap-huan
+```
+
+Script [`deploy/deploy-frontend.sh`](deploy/deploy-frontend.sh) tự `npm install`/`npm run build`
+rồi `wrangler pages deploy dist`, tự tạo project Pages tên `tap-huan` nếu chưa có (đổi tên tuỳ ý —
+chạy `--help` để xem hết tuỳ chọn, gồm `--branch` để deploy bản xem trước có URL riêng và
+`--skip-build` để deploy thẳng `dist/` đã build sẵn).
 
 ---
 

@@ -126,6 +126,17 @@ Bật *Cho học viên tự ghi danh* khi tạo hoặc sửa chương trình (ta
 và tự rời được nếu muốn. Chương trình do admin/giảng viên chủ động ghi danh thủ công (tắt tuỳ chọn
 này) thì học viên không tự rời được — đúng logic đối xứng với cách được thêm vào.
 
+### Khoá học mặc định
+
+Bật *Khoá học mặc định* (chỉ admin thấy và đặt được ở tab *Cài đặt*) để khoá **tự động hiện trong
+"Khoá học của tôi" của mọi người dùng** ngay khi xuất bản — không cần ghi danh, không cần tự đăng ký.
+Dùng cho nội dung bắt buộc như định hướng nhân viên mới hay quy tắc ứng xử. Thẻ khoá học có huy hiệu
+**📌 Bắt buộc** để người dùng hiểu vì sao nó xuất hiện mà họ không hề đăng ký.
+
+Kỹ thuật: không tạo dòng `enrollments` nào — quyền xem được cấp trực tiếp ở tầng kiểm tra quyền
+(`programAccess`) cho bất kỳ ai chưa ghi danh nhưng chương trình đang là mặc định và đã xuất bản.
+Tắt cờ đi thì học viên hết thấy ngay, không để lại enrollment rác cần dọn.
+
 ---
 
 ## Nhập câu hỏi hàng loạt
@@ -294,7 +305,7 @@ dụng đúng một lần trong một transaction, ghi nhận ở bảng `schema
 | Bảng | Nội dung |
 |---|---|
 | `users` | Tài khoản dùng chung bốn vai trò, hash bcrypt và/hoặc `google_sub` |
-| `programs` | Chương trình đào tạo: mã, `slug`, trạng thái nháp/xuất bản/lưu trữ, `allow_self_enroll` |
+| `programs` | Chương trình đào tạo: mã, `slug`, trạng thái, `allow_self_enroll`, `is_default_course` |
 | `nodes` | Cây nội dung: `parent_id` + `position` + `slug` (duy nhất trong phạm vi chương trình) |
 | `lessons` | Chi tiết bài học 1-1 với nút, giữ `drive_file_id` và `embed_url` |
 | `assignments` | Cấu hình bài tập 1-1 với nút |

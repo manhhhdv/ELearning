@@ -217,6 +217,13 @@ export const IconSettings = ({ size = 15, className }: IconProps) => (
   </svg>
 )
 
+export const IconPin = ({ size = 15, className }: IconProps) => (
+  <svg {...svgProps(size, className)}>
+    <path d="M12 17v5" />
+    <path d="M9 3h6l1 6 3 3v2H5v-2l3-3Z" />
+  </svg>
+)
+
 export const IconGoogle = ({ size = 17 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden>
     <path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.2-.4-4.7H24v8.9h11.8c-.5 2.7-2 5-4.3 6.6v5.5h7c4.1-3.8 6.6-9.4 6.6-16.3z" />

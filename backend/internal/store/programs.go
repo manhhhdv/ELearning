@@ -13,11 +13,13 @@ import (
 )
 
 const programColumns = `
-	p.id, p.code, p.slug, p.title, p.description, p.cover_url, p.status, p.allow_self_enroll,
+	p.id, p.code, p.slug, p.title, p.description, p.cover_url, p.status,
+	p.allow_self_enroll, p.is_default_course,
 	p.created_by, p.created_at, p.updated_at`
 
 // programStats đếm số nút, bài học, bài tập và lượt ghi danh của từng chương trình.
 // Tham số cuối là ID người dùng đang xem, dùng để đếm số bài họ đã hoàn thành (NULL = bỏ qua).
+// Khoá học mặc định coi như "đã ghi danh" với mọi người xem, dù không có dòng enrollments nào.
 const programStats = `
 	COALESCE((SELECT count(*) FROM nodes n WHERE n.program_id = p.id), 0),
 	COALESCE((SELECT count(*) FROM nodes n WHERE n.program_id = p.id AND n.kind = 'lesson'), 0),
@@ -26,7 +28,8 @@ const programStats = `
 	COALESCE((SELECT count(*) FROM lesson_progress lp
 	          JOIN nodes n ON n.id = lp.node_id
 	          WHERE n.program_id = p.id AND lp.user_id = $%d::uuid), 0),
-	EXISTS (SELECT 1 FROM enrollments e WHERE e.program_id = p.id AND e.user_id = $%d::uuid)`
+	(p.is_default_course OR EXISTS (
+		SELECT 1 FROM enrollments e WHERE e.program_id = p.id AND e.user_id = $%d::uuid))`
 
 type programScanner interface {
 	Scan(dest ...any) error
@@ -34,7 +37,8 @@ type programScanner interface {
 
 func scanProgram(row programScanner) (*models.Program, error) {
 	var p models.Program
-	err := row.Scan(&p.ID, &p.Code, &p.Slug, &p.Title, &p.Description, &p.CoverURL, &p.Status, &p.AllowSelfEnroll,
+	err := row.Scan(&p.ID, &p.Code, &p.Slug, &p.Title, &p.Description, &p.CoverURL, &p.Status,
+		&p.AllowSelfEnroll, &p.IsDefaultCourse,
 		&p.CreatedBy, &p.CreatedAt, &p.UpdatedAt,
 		&p.NodeCount, &p.LessonCount, &p.AssignmentCount, &p.EnrollmentCount,
 		&p.CompletedLessonCount, &p.Enrolled)
@@ -51,6 +55,7 @@ type CreateProgramParams struct {
 	CoverURL        string
 	Status          string
 	AllowSelfEnroll bool
+	IsDefaultCourse bool
 	CreatedBy       uuid.UUID
 }
 
@@ -69,9 +74,9 @@ func (s *Store) CreateProgram(ctx context.Context, p CreateProgramParams) (*mode
 
 	var id uuid.UUID
 	err = tx.QueryRow(ctx, `
-		INSERT INTO programs (code, slug, title, description, cover_url, status, allow_self_enroll, created_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-		code, slug, p.Title, p.Description, p.CoverURL, p.Status, p.AllowSelfEnroll, p.CreatedBy).Scan(&id)
+		INSERT INTO programs (code, slug, title, description, cover_url, status, allow_self_enroll, is_default_course, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+		code, slug, p.Title, p.Description, p.CoverURL, p.Status, p.AllowSelfEnroll, p.IsDefaultCourse, p.CreatedBy).Scan(&id)
 	if err != nil {
 		return nil, translate(err, "tạo chương trình")
 	}
@@ -149,7 +154,7 @@ func (s *Store) ListPrograms(ctx context.Context, f ListProgramsFilter) ([]*mode
 		FROM programs p
 		WHERE ($1 = '' OR p.status = $1)
 		  AND ($2 = '%%' OR lower(p.title) LIKE $2 OR lower(p.code) LIKE $2)
-		  AND ($3::uuid IS NULL OR EXISTS (
+		  AND ($3::uuid IS NULL OR p.is_default_course OR EXISTS (
 		        SELECT 1 FROM enrollments e WHERE e.program_id = p.id AND e.user_id = $3::uuid))
 		  AND ($4::uuid IS NULL OR p.created_by = $4::uuid OR EXISTS (
 		        SELECT 1 FROM enrollments e WHERE e.program_id = p.id AND e.user_id = $4::uuid))
@@ -179,6 +184,7 @@ type UpdateProgramParams struct {
 	CoverURL        *string
 	Status          *string
 	AllowSelfEnroll *bool
+	IsDefaultCourse *bool
 }
 
 func (s *Store) UpdateProgram(ctx context.Context, id uuid.UUID, p UpdateProgramParams) (*models.Program, error) {
@@ -207,8 +213,10 @@ func (s *Store) UpdateProgram(ctx context.Context, id uuid.UUID, p UpdateProgram
 			description = COALESCE($5, description),
 			cover_url   = COALESCE($6, cover_url),
 			status      = COALESCE($7, status),
-			allow_self_enroll = COALESCE($8, allow_self_enroll)
-		WHERE id = $1`, id, p.Code, slug, p.Title, p.Description, p.CoverURL, p.Status, p.AllowSelfEnroll)
+			allow_self_enroll = COALESCE($8, allow_self_enroll),
+			is_default_course = COALESCE($9, is_default_course)
+		WHERE id = $1`, id, p.Code, slug, p.Title, p.Description, p.CoverURL, p.Status,
+		p.AllowSelfEnroll, p.IsDefaultCourse)
 	if err != nil {
 		return nil, translate(err, "cập nhật chương trình")
 	}

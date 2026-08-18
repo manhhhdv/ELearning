@@ -22,6 +22,12 @@ type access struct {
 	CanAudit bool
 }
 
+// isDefaultCourseVisible cho biết một khoá học mặc định có nên hiện với người chưa
+// ghi danh hay không — chỉ khi đã xuất bản, tránh lộ nội dung nháp cho người ngoài.
+func isDefaultCourseVisible(p *models.Program) bool {
+	return p.IsDefaultCourse && p.Status == "published"
+}
+
 // programAccess quyết định quyền dựa trên vai trò hệ thống và vai trò ghi danh.
 func (s *Server) programAccess(r *http.Request, programID uuid.UUID) (access, error) {
 	claims, _ := auth.FromContext(r.Context())
@@ -46,13 +52,23 @@ func (s *Server) programAccess(r *http.Request, programID uuid.UUID) (access, er
 			return access{}, err
 		}
 		manage := role == "trainer"
-		return access{CanManage: manage, CanView: role != "", CanAudit: manage}, nil
+		canView := role != "" || isDefaultCourseVisible(program)
+		return access{CanManage: manage, CanView: canView, CanAudit: manage}, nil
 	default:
 		role, err := s.store.EnrollmentRole(r.Context(), programID, claims.UserID)
 		if err != nil {
 			return access{}, err
 		}
-		return access{CanView: role != ""}, nil
+		if role != "" {
+			return access{CanView: true}, nil
+		}
+		// Chưa ghi danh nhưng có thể vẫn xem được nếu đây là khoá học mặc định —
+		// tự động hiện với mọi người, không cần dòng enrollment.
+		program, err := s.store.GetProgram(r.Context(), programID, uuid.Nil)
+		if err != nil {
+			return access{}, err
+		}
+		return access{CanView: isDefaultCourseVisible(program)}, nil
 	}
 }
 
@@ -120,6 +136,8 @@ type saveProgramRequest struct {
 	CoverURL        string `json:"coverUrl"`
 	Status          string `json:"status"`
 	AllowSelfEnroll bool   `json:"allowSelfEnroll"`
+	// Ảnh hưởng tới mọi người dùng trong hệ thống nên chỉ admin đặt được — xem checkAdminOnlyDefaultFlag.
+	IsDefaultCourse bool `json:"isDefaultCourse"`
 }
 
 func (s *Server) handleCreateProgram(w http.ResponseWriter, r *http.Request) {
@@ -145,6 +163,10 @@ func (s *Server) handleCreateProgram(w http.ResponseWriter, r *http.Request) {
 	}
 
 	claims, _ := auth.FromContext(r.Context())
+	if req.IsDefaultCourse && claims.Role != models.RoleAdmin {
+		writeError(w, http.StatusForbidden, "Chỉ quản trị viên mới đặt được khoá học mặc định")
+		return
+	}
 	program, err := s.store.CreateProgram(r.Context(), store.CreateProgramParams{
 		Code:            req.Code,
 		Title:           req.Title,
@@ -152,6 +174,7 @@ func (s *Server) handleCreateProgram(w http.ResponseWriter, r *http.Request) {
 		CoverURL:        req.CoverURL,
 		Status:          req.Status,
 		AllowSelfEnroll: req.AllowSelfEnroll,
+		IsDefaultCourse: req.IsDefaultCourse,
 		CreatedBy:       claims.UserID,
 	})
 	if err != nil {
@@ -205,6 +228,8 @@ type updateProgramRequest struct {
 	CoverURL        *string `json:"coverUrl"`
 	Status          *string `json:"status"`
 	AllowSelfEnroll *bool   `json:"allowSelfEnroll"`
+	// Ảnh hưởng tới mọi người dùng trong hệ thống nên chỉ admin đổi được.
+	IsDefaultCourse *bool `json:"isDefaultCourse"`
 }
 
 func (s *Server) handleUpdateProgram(w http.ResponseWriter, r *http.Request) {
@@ -223,6 +248,11 @@ func (s *Server) handleUpdateProgram(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Trạng thái chương trình không hợp lệ")
 		return
 	}
+	claims, _ := auth.FromContext(r.Context())
+	if req.IsDefaultCourse != nil && claims.Role != models.RoleAdmin {
+		writeError(w, http.StatusForbidden, "Chỉ quản trị viên mới đổi được khoá học mặc định")
+		return
+	}
 
 	program, err := s.store.UpdateProgram(r.Context(), programID, store.UpdateProgramParams{
 		Code:            req.Code,
@@ -231,6 +261,7 @@ func (s *Server) handleUpdateProgram(w http.ResponseWriter, r *http.Request) {
 		CoverURL:        req.CoverURL,
 		Status:          req.Status,
 		AllowSelfEnroll: req.AllowSelfEnroll,
+		IsDefaultCourse: req.IsDefaultCourse,
 	})
 	if err != nil {
 		if errors.Is(err, store.ErrConflict) {

@@ -53,7 +53,9 @@ type Program struct {
 	CoverURL    string `json:"coverUrl"`
 	Status      string `json:"status"`
 	// Cho phép học viên tự bấm ghi danh thay vì chờ admin thêm vào.
-	AllowSelfEnroll bool       `json:"allowSelfEnroll"`
+	AllowSelfEnroll bool `json:"allowSelfEnroll"`
+	// Tự động hiện trong "Khoá học của tôi" của mọi người dùng, không cần ghi danh.
+	IsDefaultCourse bool       `json:"isDefaultCourse"`
 	CreatedBy       *uuid.UUID `json:"createdBy"`
 	CreatedAt       time.Time  `json:"createdAt"`
 	UpdatedAt       time.Time  `json:"updatedAt"`

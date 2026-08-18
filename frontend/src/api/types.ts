@@ -31,6 +31,8 @@ export interface Program {
   status: ProgramStatus
   /** Cho phép học viên tự bấm ghi danh thay vì chờ admin thêm vào. */
   allowSelfEnroll: boolean
+  /** Tự động hiện trong "Khoá học của tôi" của mọi người dùng, không cần ghi danh. Chỉ admin đặt được. */
+  isDefaultCourse: boolean
   createdBy: string | null
   createdAt: string
   updatedAt: string

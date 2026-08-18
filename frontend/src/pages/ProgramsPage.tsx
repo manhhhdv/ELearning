@@ -126,11 +126,13 @@ function CreateProgramModal({
   onClose: () => void
   onCreated: (p: Program) => void
 }) {
+  const { user } = useAuth()
   const [code, setCode] = useState('')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [status, setStatus] = useState<ProgramStatus>('draft')
   const [allowSelfEnroll, setAllowSelfEnroll] = useState(false)
+  const [isDefaultCourse, setIsDefaultCourse] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -140,7 +142,7 @@ function CreateProgramModal({
     setError(null)
     try {
       onCreated(await api.createProgram({
-        code: code.trim(), title: title.trim(), description, status, allowSelfEnroll,
+        code: code.trim(), title: title.trim(), description, status, allowSelfEnroll, isDefaultCourse,
       }))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tạo được chương trình')
@@ -202,6 +204,22 @@ function CreateProgramModal({
         <div className="hint">
           Bật thì khoá học xuất hiện ở mục “Khám phá khoá học”, học viên tự bấm đăng ký.
         </div>
+
+        {user?.role === 'admin' && (
+          <div className="field" style={{ marginTop: 14 }}>
+            <label className="checkbox">
+              <input
+                type="checkbox" checked={isDefaultCourse}
+                onChange={(e) => setIsDefaultCourse(e.target.checked)}
+              />
+              Khoá học mặc định
+            </label>
+            <div className="hint">
+              Tự động hiện trong “Khoá học của tôi” của <b>mọi người dùng</b> ngay khi xuất bản, không
+              cần ghi danh. Dùng cho nội dung bắt buộc như định hướng nhân viên mới. Chỉ admin đặt được.
+            </div>
+          </div>
+        )}
       </form>
     </Modal>
   )

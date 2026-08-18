@@ -499,12 +499,14 @@ function SettingsTab({
   onUpdated: (p: Program) => void
   readOnly: boolean
 }) {
+  const { user } = useAuth()
   const [title, setTitle] = useState(program.title)
   const [code, setCode] = useState(program.code)
   const [description, setDescription] = useState(program.description)
   const [coverUrl, setCoverUrl] = useState(program.coverUrl)
   const [status, setStatus] = useState<ProgramStatus>(program.status)
   const [allowSelfEnroll, setAllowSelfEnroll] = useState(program.allowSelfEnroll)
+  const [isDefaultCourse, setIsDefaultCourse] = useState(program.isDefaultCourse)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -518,6 +520,7 @@ function SettingsTab({
       onUpdated(await api.updateProgram(program.id, {
         title: title.trim(), code: code.trim(), description,
         coverUrl: coverUrl.trim(), status, allowSelfEnroll,
+        ...(user?.role === 'admin' ? { isDefaultCourse } : {}),
       }))
       setSaved(true)
     } catch (err) {
@@ -592,6 +595,22 @@ function SettingsTab({
           được. Tắt thì chỉ quản trị viên hoặc giảng viên mới thêm được người vào khoá.
         </div>
       </div>
+
+      {user?.role === 'admin' && (
+        <div className="field">
+          <label className="checkbox">
+            <input
+              type="checkbox" checked={isDefaultCourse}
+              onChange={(e) => setIsDefaultCourse(e.target.checked)}
+            />
+            Khoá học mặc định
+          </label>
+          <div className="hint">
+            Tự động hiện trong “Khoá học của tôi” của <b>mọi người dùng</b> ngay khi xuất bản, không
+            cần ghi danh — dùng cho nội dung bắt buộc như định hướng nhân viên mới. Chỉ admin đặt được.
+          </div>
+        </div>
+      )}
 
       </fieldset>
 

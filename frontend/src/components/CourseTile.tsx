@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 
 import type { Program } from '../api/types'
-import { IconDoc } from './icons'
+import { IconDoc, IconPin } from './icons'
 
 /** Dải màu dự phòng khi khoá học chưa có ảnh bìa, suy từ mã khoá nên luôn ổn định. */
 const GRADIENTS = [
@@ -33,6 +33,11 @@ export function CourseTile({ program }: { program: Program }) {
 
   return (
     <Link to={`/hoc/${program.slug}`} className="tile">
+      {program.isDefaultCourse && (
+        <span className="tile-default-badge" title="Khoá học mặc định — tự động hiện với mọi người">
+          <IconPin size={11} /> Bắt buộc
+        </span>
+      )}
       <div className="tile-cover" style={courseCover(program)}>
         {!program.coverUrl && program.code}
       </div>

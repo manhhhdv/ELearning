@@ -115,14 +115,15 @@ export const api = {
     return get<Program[]>(`/programs?${q}`)
   },
   createProgram: (body: {
-    code: string; title: string; description: string; status: string; allowSelfEnroll: boolean
+    code: string; title: string; description: string; status: string
+    allowSelfEnroll: boolean; isDefaultCourse?: boolean
   }) =>
     post<Program>('/programs', body),
   getProgram: (id: string) => get<Program>(`/programs/${id}`),
   getProgramBySlug: (slug: string) => get<Program>(`/programs/slug/${slug}`),
   updateProgram: (id: string, body: Partial<{
     code: string; title: string; description: string; coverUrl: string
-    status: string; allowSelfEnroll: boolean
+    status: string; allowSelfEnroll: boolean; isDefaultCourse: boolean
   }>) =>
     patch<Program>(`/programs/${id}`, body),
   deleteProgram: (id: string) => del(`/programs/${id}`),

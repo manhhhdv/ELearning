@@ -621,6 +621,7 @@ tbody tr:hover { background: var(--surface-2); }
 }
 
 .tile {
+  position: relative;
   background: #fff;
   border: 1px solid #dfe6ee;
   border-radius: 10px;
@@ -629,6 +630,23 @@ tbody tr:hover { background: var(--surface-2); }
   flex-direction: column;
   color: inherit;
   transition: box-shadow .16s, transform .16s;
+}
+.tile-default-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: rgba(17, 24, 39, .72);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  backdrop-filter: blur(2px);
 }
 .tile:hover {
   text-decoration: none;
