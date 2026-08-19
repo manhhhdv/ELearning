@@ -17,6 +17,20 @@ export function ImportQuestionsModal({ nodeId, onClose, onImported }: Props) {
   const [raw, setRaw] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [uploading, setUploading] = useState(false)
+
+  const handleFile = async (file: File) => {
+    setUploading(true)
+    setError(null)
+    try {
+      const res = await api.importQuestionsFile(nodeId, file)
+      setRaw(res.text)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không đọc được file')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   // Phân tích lại mỗi lần gõ để người dùng thấy ngay mình nhập đúng chưa.
   const { questions, issues } = useMemo(() => parseQuestions(raw, format), [raw, format])
@@ -104,13 +118,31 @@ export function ImportQuestionsModal({ nodeId, onClose, onImported }: Props) {
         </button>
       </details>
 
+      {format === 'table' && (
+        <div className="field">
+          <label htmlFor="import-file">Hoặc tải file lên (.xlsx, .csv)</label>
+          <input
+            id="import-file"
+            type="file"
+            accept=".xlsx,.csv"
+            disabled={uploading}
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (file) void handleFile(file)
+            }}
+          />
+          {uploading && <span className="tiny muted" style={{ marginLeft: 8 }}>Đang đọc file…</span>}
+        </div>
+      )}
+
       <div className="field">
         <label htmlFor="import-src">Dán nội dung</label>
         <textarea
           id="import-src"
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
-          placeholder={format === 'text' ? 'Dán hoặc gõ câu hỏi…' : 'Dán vùng bảng đã sao chép…'}
+          placeholder={format === 'text' ? 'Dán hoặc gõ câu hỏi…' : 'Dán vùng bảng đã sao chép… hoặc tải file lên ở trên'}
           style={{ minHeight: 190, fontFamily: format === 'table' ? 'ui-monospace, monospace' : undefined }}
         />
       </div>

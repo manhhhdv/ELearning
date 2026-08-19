@@ -24,7 +24,7 @@ export class ApiError extends Error {
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
   headers.set('Accept', 'application/json')
-  if (init.body) headers.set('Content-Type', 'application/json')
+  if (init.body && !(init.body instanceof FormData)) headers.set('Content-Type', 'application/json')
 
   const token = getToken()
   if (token) headers.set('Authorization', `Bearer ${token}`)
@@ -42,6 +42,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 const get = <T>(path: string) => request<T>(path)
+// Không set Content-Type thủ công: trình duyệt tự thêm boundary cho multipart/form-data.
+const postFile = <T>(path: string, file: File) => {
+  const body = new FormData()
+  body.append('file', file)
+  return request<T>(path, { method: 'POST', body })
+}
 const post = <T>(path: string, body?: unknown) =>
   request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
 const patch = <T>(path: string, body: unknown) =>
@@ -161,6 +167,8 @@ export const api = {
     post<{ message: string }>(`/nodes/${nodeId}/questions/reorder`, { questionIds }),
   importQuestions: (nodeId: string, questions: QuestionInput[]) =>
     post<{ imported: number; questions: Question[] }>(`/nodes/${nodeId}/questions/import`, { questions }),
+  importQuestionsFile: (nodeId: string, file: File) =>
+    postFile<{ text: string }>(`/nodes/${nodeId}/questions/import-file`, file),
   assignmentResults: (nodeId: string) => get<AssignmentResults>(`/nodes/${nodeId}/results`),
 
   // Ghi danh

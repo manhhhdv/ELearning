@@ -2,14 +2,14 @@
   // Đổi "name" thành tên Worker thật bạn muốn dùng — nó quyết định domain mặc định
   // <name>.<subdomain>.workers.dev và là định danh của Worker trên tài khoản Cloudflare.
   // Cấu hình gốc (top-level) này dùng cho production: `wrangler deploy` không kèm `--env`.
-  "name": "tap-huan",
+  "name": "dao-tao",
   "compatibility_date": "2026-08-18",
   "main": "worker/index.js",
 
   // BACKEND_ORIGIN: domain thật của backend (Docker + Tunnel/Caddy, xem DEPLOY.md mục 3).
   // worker/index.js đọc biến này để proxy /api/*.
   "vars": {
-    "BACKEND_ORIGIN": "https://api.yourdomain.com",
+    "BACKEND_ORIGIN": "https://api.daotao.space",
   },
 
   "assets": {
@@ -32,7 +32,7 @@
   "env": {
     "staging": {
       "vars": {
-        "BACKEND_ORIGIN": "https://api-staging.yourdomain.com",
+        "BACKEND_ORIGIN": "https://api.daotao.space",
       },
     },
   },

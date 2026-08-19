@@ -112,6 +112,7 @@ func (s *Server) Router() http.Handler {
 				r.Post("/questions", s.handleCreateQuestion)
 				r.Post("/questions/reorder", s.handleReorderQuestions)
 				r.Post("/questions/import", s.handleImportQuestions)
+				r.Post("/questions/import-file", s.handleImportQuestionsFile)
 				r.Get("/results", s.handleAssignmentResults)
 				r.Post("/complete", s.handleMarkComplete)
 				r.Get("/attempt", s.handleGetAttempt)

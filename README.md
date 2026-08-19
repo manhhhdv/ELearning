@@ -150,6 +150,9 @@ trước khi nhập thật:
 - **Dán từ Excel / Google Sheets**: dán thẳng vùng đã copy (phân tách bằng Tab), thứ tự cột *Mã · Nội
   dung · Điểm · PA1-4 · Đáp án đúng (ghi `1,3` hoặc `A,C`) · Giải thích*.
 
+**Giải thích là bắt buộc** với mọi câu hỏi (kể cả tự luận, dùng làm gợi ý chấm bài) — thiếu giải thích
+bị chặn ngay khi lưu một câu đơn lẻ lẫn khi nhập hàng loạt, cả ở form lẫn API.
+
 Nhập hàng loạt là **một transaction** — sai một câu thì không câu nào được ghi, tránh nhập dở dang.
 Câu hỏi có **mã cố định** (`C01`, `C02`…, hoặc tự đặt), không đổi khi kéo sắp xếp lại thứ tự — dùng để
 đối chiếu qua các lần sửa và hiển thị trên bảng thống kê kết quả theo từng câu (tab *Kết quả học
