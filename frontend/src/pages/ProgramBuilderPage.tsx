@@ -6,9 +6,10 @@ import type { Enrollment, Program, ProgramStatus, TreeNode, User } from '../api/
 import { ROLE_LABEL, STATUS_LABEL } from '../api/types'
 import { isReadOnlyViewer, useAuth } from '../auth'
 import { PageHeader } from '../components/Layout'
+import { ImportStructureModal } from '../components/ImportStructureModal'
 import { NodeEditor } from '../components/NodeEditor'
 import { ProgramTree } from '../components/ProgramTree'
-import { IconEye, IconPlus } from '../components/icons'
+import { IconEye, IconPlus, IconUpload } from '../components/icons'
 import { EmptyState, ErrorAlert, Loading, Modal, formatDate } from '../components/ui'
 
 type Tab = 'content' | 'learners' | 'settings'
@@ -25,6 +26,7 @@ export function ProgramBuilderPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  const [importing, setImporting] = useState(false)
 
   // ID nội bộ, tra một lần từ slug trên URL rồi dùng lại cho mọi lời gọi API.
   const programId = program?.id ?? ''
@@ -87,6 +89,11 @@ export function ProgramBuilderPage() {
               <IconEye /> Xem trước
             </Link>
             {!readOnly && (
+              <button className="btn" onClick={() => setImporting(true)}>
+                <IconUpload /> Nhập từ file
+              </button>
+            )}
+            {!readOnly && (
               <button className="btn btn-primary" onClick={() => setAdding(true)}>
                 <IconPlus /> Thêm nội dung
               </button>
@@ -145,6 +152,19 @@ export function ProgramBuilderPage() {
         {tab === 'learners' && <LearnersTab programId={programId} readOnly={readOnly} />}
         {tab === 'settings' && <SettingsTab program={program} onUpdated={setProgram} readOnly={readOnly} />}
       </div>
+
+      {importing && (
+        <ImportStructureModal
+          programId={programId}
+          folders={folderOptions(tree)}
+          defaultParentId={selected?.kind === 'folder' ? selected.id : selected?.parentId ?? null}
+          onClose={() => setImporting(false)}
+          onImported={async () => {
+            setImporting(false)
+            setTree(await api.getTree(programId))
+          }}
+        />
+      )}
 
       {adding && (
         <AddNodeModal

@@ -37,30 +37,36 @@ func (s *Server) handleImportQuestionsFile(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	rows, errMsg := readUploadedTable(w, r)
+	if errMsg != "" {
+		writeError(w, http.StatusBadRequest, errMsg)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, importQuestionsFileResponse{Text: rowsToTabText(rows)})
+}
+
+// readUploadedTable nhận file .xlsx/.csv từ form multipart và trả về các hàng dữ liệu.
+func readUploadedTable(w http.ResponseWriter, r *http.Request) ([][]string, string) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxImportFileSize)
 	if err := r.ParseMultipartForm(maxImportFileSize); err != nil {
-		writeError(w, http.StatusBadRequest, "File quá lớn hoặc không đọc được (tối đa 5MB)")
-		return
+		return nil, "File quá lớn hoặc không đọc được (tối đa 5MB)"
 	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Vui lòng chọn một file để tải lên")
-		return
+		return nil, "Vui lòng chọn một file để tải lên"
 	}
 	defer file.Close()
 
 	rows, errMsg := parseImportFile(file, header.Filename)
 	if errMsg != "" {
-		writeError(w, http.StatusBadRequest, errMsg)
-		return
+		return nil, errMsg
 	}
 	if len(rows) == 0 {
-		writeError(w, http.StatusBadRequest, "File không có dữ liệu")
-		return
+		return nil, "File không có dữ liệu"
 	}
-
-	writeJSON(w, http.StatusOK, importQuestionsFileResponse{Text: rowsToTabText(rows)})
+	return rows, ""
 }
 
 // parseImportFile đọc file theo phần mở rộng, trả về các hàng dữ liệu dạng bảng.

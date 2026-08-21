@@ -94,6 +94,8 @@ func (s *Server) Router() http.Handler {
 					r.Patch("/", s.handleUpdateProgram)
 					r.Delete("/", s.handleDeleteProgram)
 					r.Post("/nodes", s.handleCreateNode)
+					r.Post("/structure/import", s.handleImportStructure)
+					r.Post("/structure/import-file", s.handleImportStructureFile)
 					r.Get("/enrollments", s.handleListEnrollments)
 					r.Post("/enrollments", s.handleEnroll)
 					r.Delete("/enrollments/{userID}", s.handleUnenroll)

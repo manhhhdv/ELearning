@@ -65,6 +65,16 @@ export interface LessonInput {
   body: string
 }
 
+export interface StructureItemInput {
+  level: number
+  kind: string
+  title: string
+  description: string
+  contentType: string
+  source: string
+  durationMinutes: number
+}
+
 export interface AssignmentInput {
   instructions: string
   timeLimitMinutes: number
@@ -146,6 +156,10 @@ export const api = {
     assignment?: AssignmentInput
   }) => post<TreeNode>(`/programs/${programId}/nodes`, body),
   getNode: (nodeId: string) => get<TreeNode>(`/nodes/${nodeId}`),
+  importStructure: (programId: string, parentId: string | null, items: StructureItemInput[]) =>
+    post<{ imported: number }>(`/programs/${programId}/structure/import`, { parentId, items }),
+  importStructureFile: (programId: string, file: File) =>
+    postFile<{ text: string }>(`/programs/${programId}/structure/import-file`, file),
   updateNode: (nodeId: string, body: {
     title?: string
     description?: string
