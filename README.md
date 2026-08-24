@@ -248,6 +248,24 @@ cho toàn bộ domain tổ chức), nếu không học viên sẽ thấy khung n
 
 ---
 
+## Bài học "Tài liệu tải về"
+
+Chọn *Loại nội dung* → **Tài liệu tải về** khi bài học chỉ là bộ tài liệu cho học viên tải về thay vì
+một file nhúng. Mỗi dòng trong ô *Tài liệu tải về* gồm **tên hiển thị** và **link tải**; dùng nút ↑ ↓
+để sắp thứ tự, nút thùng rác để xoá, tối đa 50 tài liệu cho một bài.
+
+- Link nhận URL `http(s)` bất kỳ, hoặc link chia sẻ / ID file Google Drive (dán ID thì hệ thống dựng
+  thành `https://drive.google.com/file/d/ID/view`).
+- Bỏ trống tên thì học viên thấy chính đường link; dòng để trống cả hai ô sẽ bị bỏ qua khi lưu.
+- File Drive vẫn phải đặt quyền chia sẻ *"Bất kỳ ai có đường liên kết"*, nếu không học viên bấm vào
+  sẽ bị chặn.
+- Ô *Ghi chú cho học viên* vẫn dùng được để hướng dẫn thêm, hiện dưới danh sách tài liệu.
+
+Trang học hiển thị danh sách thành các thẻ bấm được, mở ở tab mới. Nhập cấu trúc từ Excel: ghi
+`materials` (hoặc `tài liệu tải về`, `đính kèm`) ở cột *loại nội dung*, rồi thêm tài liệu sau khi nhập.
+
+---
+
 ## Nhận diện và giao diện
 
 Logo **Tập Huấn** là chiếc mũ tốt nghiệp trên nền xanh bo góc, dùng chung cho thanh điều hướng,

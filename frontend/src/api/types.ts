@@ -2,7 +2,7 @@
 
 export type Role = 'admin' | 'trainer' | 'supervisor' | 'student'
 export type NodeKind = 'folder' | 'lesson' | 'assignment'
-export type ContentType = 'video' | 'slide' | 'document' | 'pdf' | 'link' | 'richtext'
+export type ContentType = 'video' | 'slide' | 'document' | 'pdf' | 'link' | 'richtext' | 'materials'
 export type QuestionType = 'single_choice' | 'multi_choice' | 'essay'
 export type ProgramStatus = 'draft' | 'published' | 'archived'
 
@@ -52,6 +52,14 @@ export interface Lesson {
   embedUrl: string
   durationMinutes: number
   body: string
+  /** Tài liệu tải về kèm bài học; dùng cho loại nội dung "materials". */
+  attachments: LessonAttachment[]
+}
+
+/** Một tài liệu tải về: tên hiển thị và link tải. */
+export interface LessonAttachment {
+  name: string
+  url: string
 }
 
 export interface Assignment {
@@ -76,6 +84,7 @@ export interface TreeNode {
   description: string
   position: number
   isPublished: boolean
+  isLocked: boolean
   createdAt: string
   updatedAt: string
   lesson?: Lesson
@@ -258,6 +267,7 @@ export const CONTENT_TYPE_LABEL: Record<ContentType, string> = {
   pdf: 'PDF',
   link: 'Liên kết ngoài',
   richtext: 'Bài đọc tự soạn',
+  materials: 'Tài liệu tải về',
 }
 
 export const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {

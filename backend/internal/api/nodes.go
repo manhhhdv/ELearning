@@ -1,7 +1,9 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,11 +16,21 @@ import (
 // lessonInput là phần dữ liệu bài học gửi lên từ form soạn thảo.
 // Source nhận link chia sẻ Google Drive hoặc ID file, hệ thống tự dựng URL nhúng.
 type lessonInput struct {
-	ContentType     string `json:"contentType"`
-	Source          string `json:"source"`
-	DurationMinutes int    `json:"durationMinutes"`
-	Body            string `json:"body"`
+	ContentType     string            `json:"contentType"`
+	Source          string            `json:"source"`
+	DurationMinutes int               `json:"durationMinutes"`
+	Body            string            `json:"body"`
+	Attachments     []attachmentInput `json:"attachments"`
 }
+
+// attachmentInput là một tài liệu tải về của bài học dạng "materials".
+type attachmentInput struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+// Chặn payload rác; một bài học thực tế không cần nhiều hơn số này.
+const maxLessonAttachments = 50
 
 type assignmentInput struct {
 	Instructions     string     `json:"instructions"`
@@ -35,6 +47,7 @@ type createNodeRequest struct {
 	Title       string           `json:"title"`
 	Description string           `json:"description"`
 	IsPublished *bool            `json:"isPublished"`
+	IsLocked    *bool            `json:"isLocked"`
 	Lesson      *lessonInput     `json:"lesson"`
 	Assignment  *assignmentInput `json:"assignment"`
 }
@@ -74,6 +87,7 @@ func (s *Server) handleCreateNode(w http.ResponseWriter, r *http.Request) {
 		Title:       req.Title,
 		Description: req.Description,
 		IsPublished: published,
+		IsLocked:    req.IsLocked != nil && *req.IsLocked,
 	}
 	if req.Kind == models.KindLesson {
 		lesson, err := buildLesson(req.Lesson)
@@ -124,6 +138,7 @@ type updateNodeRequest struct {
 	Title       *string          `json:"title"`
 	Description *string          `json:"description"`
 	IsPublished *bool            `json:"isPublished"`
+	IsLocked    *bool            `json:"isLocked"`
 	Lesson      *lessonInput     `json:"lesson"`
 	Assignment  *assignmentInput `json:"assignment"`
 }
@@ -146,6 +161,7 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 		Title:       req.Title,
 		Description: req.Description,
 		IsPublished: req.IsPublished,
+		IsLocked:    req.IsLocked,
 	}
 	if req.Lesson != nil {
 		lesson, err := buildLesson(req.Lesson)
@@ -222,6 +238,10 @@ func (s *Server) loadNode(w http.ResponseWriter, r *http.Request, nodeID uuid.UU
 	if !ok {
 		return nil, access{}, false
 	}
+	if !manage && !acc.CanAudit && node.IsLocked {
+		writeError(w, http.StatusForbidden, "Nội dung này đang bị khoá")
+		return nil, access{}, false
+	}
 	return node, acc, true
 }
 
@@ -236,12 +256,18 @@ func buildLesson(in *lessonInput) (*models.Lesson, error) {
 		return nil, errValidation("Loại nội dung bài học không hợp lệ")
 	}
 
-	// Bài tự soạn không nhúng file bên ngoài: toàn bộ nội dung nằm trong Body.
-	if in.ContentType == "richtext" {
+	attachments, err := buildAttachments(in.Attachments)
+	if err != nil {
+		return nil, err
+	}
+
+	// Bài tự soạn và bài tài liệu không nhúng file bên ngoài.
+	if in.ContentType == "richtext" || in.ContentType == "materials" {
 		return &models.Lesson{
 			ContentType:     in.ContentType,
 			DurationMinutes: in.DurationMinutes,
 			Body:            in.Body,
+			Attachments:     attachments,
 		}, nil
 	}
 
@@ -255,7 +281,51 @@ func buildLesson(in *lessonInput) (*models.Lesson, error) {
 		EmbedURL:        embedURL,
 		DurationMinutes: in.DurationMinutes,
 		Body:            in.Body,
+		Attachments:     attachments,
 	}, nil
+}
+
+// buildAttachments chuẩn hoá danh sách tài liệu tải về: bỏ dòng trống,
+// kiểm tra link và lấy tên hiển thị mặc định từ chính link khi để trống.
+func buildAttachments(in []attachmentInput) ([]models.LessonAttachment, error) {
+	list := make([]models.LessonAttachment, 0, len(in))
+	for _, a := range in {
+		name, raw := trimmed(a.Name), trimmed(a.URL)
+		if name == "" && raw == "" {
+			continue
+		}
+		link := normalizeAttachmentURL(raw)
+		if link == "" {
+			label := name
+			if label == "" {
+				label = "không tên"
+			}
+			return nil, errValidation("Tài liệu “" + label + "” chưa có link tải hợp lệ (http/https hoặc link Google Drive)")
+		}
+		if name == "" {
+			name = link
+		}
+		list = append(list, models.LessonAttachment{Name: name, URL: link})
+	}
+	if len(list) > maxLessonAttachments {
+		return nil, errValidation(fmt.Sprintf("Mỗi bài học chỉ đính kèm tối đa %d tài liệu", maxLessonAttachments))
+	}
+	return list, nil
+}
+
+// normalizeAttachmentURL nhận link http(s) bất kỳ; nếu người soạn chỉ dán ID file
+// Google Drive thì dựng sẵn link Drive tương ứng. Trả về "" khi không dùng được.
+func normalizeAttachmentURL(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	if u, err := url.Parse(raw); err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" {
+		return raw
+	}
+	if id := util.ExtractDriveID(raw); id != "" {
+		return "https://drive.google.com/file/d/" + id + "/view"
+	}
+	return ""
 }
 
 func buildAssignment(in *assignmentInput) *models.Assignment {
@@ -295,7 +365,7 @@ func validNodeKind(kind string) bool {
 
 func validContentType(ct string) bool {
 	switch ct {
-	case "video", "slide", "document", "pdf", "link", "richtext":
+	case "video", "slide", "document", "pdf", "link", "richtext", "materials":
 		return true
 	}
 	return false

@@ -26,7 +26,7 @@ export const STRUCTURE_KIND_LABEL: Record<StructureItem['kind'], string> = {
   assignment: 'Bài tập',
 }
 
-const CONTENT_TYPES = ['video', 'slide', 'document', 'pdf', 'link', 'richtext']
+const CONTENT_TYPES = ['video', 'slide', 'document', 'pdf', 'link', 'richtext', 'materials']
 
 /** Bỏ dấu tiếng Việt để nhận diện tên loại người dùng gõ tự do. */
 function normalize(text: string): string {
@@ -51,6 +51,7 @@ function parseContentType(cell: string): string | null {
   if (['pdf'].includes(v)) return 'pdf'
   if (['link', 'lien ket', 'url'].includes(v)) return 'link'
   if (['richtext', 'rich text', 'tu soan', 'bai doc', 'bai doc tu soan', 'markdown'].includes(v)) return 'richtext'
+  if (['materials', 'tai lieu tai ve', 'tai lieu dinh kem', 'dinh kem', 'tai ve'].includes(v)) return 'materials'
   return CONTENT_TYPES.includes(v) ? v : null
 }
 

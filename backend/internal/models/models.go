@@ -83,6 +83,7 @@ type Node struct {
 	Description string    `json:"description"`
 	Position    int       `json:"position"`
 	IsPublished bool      `json:"isPublished"`
+	IsLocked    bool      `json:"isLocked"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 
@@ -101,6 +102,14 @@ type Lesson struct {
 	EmbedURL        string `json:"embedUrl"`
 	DurationMinutes int    `json:"durationMinutes"`
 	Body            string `json:"body"`
+	// Danh sách tài liệu tải về kèm theo bài học (dùng cho loại "materials").
+	Attachments []LessonAttachment `json:"attachments"`
+}
+
+// LessonAttachment là một tài liệu đính kèm: tên hiển thị và link tải.
+type LessonAttachment struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
 }
 
 type Assignment struct {

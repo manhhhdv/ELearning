@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
-import type { AssignmentInput, LessonInput } from '../api/client'
+import type { AssignmentInput, LessonAttachmentInput, LessonInput } from '../api/client'
 import type { ContentType, TreeNode } from '../api/types'
 import { CONTENT_TYPE_LABEL } from '../api/types'
 import { AssignmentResultsPanel } from './AssignmentResultsPanel'
-import { IconChart } from './icons'
+import { IconChart, IconPlus, IconTrash } from './icons'
 import { QuestionEditor } from './QuestionEditor'
 import { RichTextEditor } from './RichTextEditor'
 import { ErrorAlert, SuccessAlert } from './ui'
@@ -28,12 +28,14 @@ export function NodeEditor({ node, onSaved, onDeleted, readOnly = false }: Props
   const [title, setTitle] = useState(node.title)
   const [description, setDescription] = useState(node.description)
   const [isPublished, setIsPublished] = useState(node.isPublished)
+  const [isLocked, setIsLocked] = useState(node.isLocked)
 
   const [contentType, setContentType] = useState<ContentType>(node.lesson?.contentType ?? 'video')
   // Ô nhập nhận link chia sẻ Drive; khi mở lại bài cũ ta hiển thị chính URL nhúng đã lưu.
   const [source, setSource] = useState(node.lesson?.embedUrl ?? '')
   const [duration, setDuration] = useState(node.lesson?.durationMinutes ?? 0)
   const [body, setBody] = useState(node.lesson?.body ?? '')
+  const [attachments, setAttachments] = useState<LessonAttachmentInput[]>(node.lesson?.attachments ?? [])
 
   const [instructions, setInstructions] = useState(node.assignment?.instructions ?? '')
   const [timeLimit, setTimeLimit] = useState(node.assignment?.timeLimitMinutes ?? 0)
@@ -49,16 +51,20 @@ export function NodeEditor({ node, onSaved, onDeleted, readOnly = false }: Props
 
   // Bài đọc tự soạn thay hẳn khung nhúng Google Drive bằng nội dung viết trong hệ thống.
   const isRichText = contentType === 'richtext'
+  // Bài tài liệu không nhúng gì cả: chỉ là danh sách file cho học viên tải về.
+  const isMaterials = contentType === 'materials'
 
   // Nạp lại form khi người dùng chọn một nút khác trên cây.
   useEffect(() => {
     setTitle(node.title)
     setDescription(node.description)
     setIsPublished(node.isPublished)
+    setIsLocked(node.isLocked)
     setContentType(node.lesson?.contentType ?? 'video')
     setSource(node.lesson?.embedUrl ?? '')
     setDuration(node.lesson?.durationMinutes ?? 0)
     setBody(node.lesson?.body ?? '')
+    setAttachments(node.lesson?.attachments ?? [])
     setInstructions(node.assignment?.instructions ?? '')
     setTimeLimit(node.assignment?.timeLimitMinutes ?? 0)
     setMaxAttempts(node.assignment?.maxAttempts ?? 0)
@@ -77,12 +83,20 @@ export function NodeEditor({ node, onSaved, onDeleted, readOnly = false }: Props
     setSaved(null)
 
     const payload: {
-      title: string; description: string; isPublished: boolean
+      title: string; description: string; isPublished: boolean; isLocked: boolean
       lesson?: LessonInput; assignment?: AssignmentInput
-    } = { title: title.trim(), description, isPublished }
+    } = { title: title.trim(), description, isPublished, isLocked }
 
     if (node.kind === 'lesson') {
-      payload.lesson = { contentType, source: source.trim(), durationMinutes: Number(duration) || 0, body }
+      payload.lesson = {
+        contentType,
+        source: source.trim(),
+        durationMinutes: Number(duration) || 0,
+        body,
+        attachments: attachments
+          .map((a) => ({ name: a.name.trim(), url: a.url.trim() }))
+          .filter((a) => a.name !== '' || a.url !== ''),
+      }
     }
     if (node.kind === 'assignment') {
       payload.assignment = {
@@ -104,6 +118,19 @@ export function NodeEditor({ node, onSaved, onDeleted, readOnly = false }: Props
     } finally {
       setBusy(false)
     }
+  }
+
+  const setAttachment = (index: number, patch: Partial<LessonAttachmentInput>) => {
+    setAttachments(attachments.map((a, i) => (i === index ? { ...a, ...patch } : a)))
+  }
+
+  const moveAttachment = (index: number, delta: number) => {
+    const target = index + delta
+    if (target < 0 || target >= attachments.length) return
+    const next = [...attachments]
+    const [item] = next.splice(index, 1)
+    next.splice(target, 0, item)
+    setAttachments(next)
   }
 
   const remove = async () => {
@@ -171,6 +198,49 @@ export function NodeEditor({ node, onSaved, onDeleted, readOnly = false }: Props
                 <div className="hint" style={{ marginTop: -4 }}>
                   Bài đọc tự soạn không cần file bên ngoài: nội dung viết thẳng bên dưới bằng
                   markdown, có công thức LaTeX và media nhúng.
+                </div>
+              ) : isMaterials ? (
+                <div className="field">
+                  <label>Tài liệu tải về</label>
+                  {attachments.map((a, i) => (
+                    <div className="attach-row" key={i}>
+                      <input
+                        type="text"
+                        value={a.name}
+                        onChange={(e) => setAttachment(i, { name: e.target.value })}
+                        placeholder={`Tên tài liệu ${i + 1}`}
+                      />
+                      <input
+                        type="text"
+                        value={a.url}
+                        onChange={(e) => setAttachment(i, { url: e.target.value })}
+                        placeholder="https://… hoặc link Google Drive"
+                      />
+                      <button
+                        type="button" className="btn btn-ghost btn-sm" title="Lên"
+                        onClick={() => moveAttachment(i, -1)} disabled={i === 0}
+                      >↑</button>
+                      <button
+                        type="button" className="btn btn-ghost btn-sm" title="Xuống"
+                        onClick={() => moveAttachment(i, 1)} disabled={i === attachments.length - 1}
+                      >↓</button>
+                      <button
+                        type="button" className="btn btn-ghost btn-sm" title="Xoá tài liệu"
+                        onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))}
+                      ><IconTrash /></button>
+                    </div>
+                  ))}
+                  <button
+                    type="button" className="btn btn-sm"
+                    onClick={() => setAttachments([...attachments, { name: '', url: '' }])}
+                  >
+                    <IconPlus /> Thêm tài liệu
+                  </button>
+                  <div className="hint">
+                    Mỗi dòng là một file học viên tải về: đặt tên hiển thị và dán link tải
+                    (Google Drive hoặc URL bất kỳ). Với file Drive nhớ đặt quyền chia sẻ
+                    “Bất kỳ ai có đường liên kết”. Bỏ trống tên thì hệ thống hiển thị chính link.
+                  </div>
                 </div>
               ) : (
                 <>
@@ -278,6 +348,10 @@ export function NodeEditor({ node, onSaved, onDeleted, readOnly = false }: Props
           <label className="checkbox">
             <input type="checkbox" checked={isPublished} onChange={(e) => setIsPublished(e.target.checked)} />
             Hiển thị với học viên
+          </label>
+          <label className="checkbox">
+            <input type="checkbox" checked={isLocked} onChange={(e) => setIsLocked(e.target.checked)} />
+            Khoá nội dung với học viên
           </label>
         </div>
         </fieldset>

@@ -11,7 +11,7 @@ import {
 } from '../components/icons'
 import { LogoMark } from '../components/Logo'
 import { RichContent } from '../components/RichContent'
-import { Loading } from '../components/ui'
+import { LessonAttachments, Loading } from '../components/ui'
 
 export function CoursePage() {
   const { programSlug = '', nodeSlug } = useParams()
@@ -244,6 +244,21 @@ export function CoursePage() {
                 ) : (
                   <div className="callout warn">Bài học này chưa có nội dung.</div>
                 )
+              ) : current.lesson?.contentType === 'materials' ? (
+                <>
+                  {current.lesson.attachments?.length ? (
+                    <LessonAttachments items={current.lesson.attachments} />
+                  ) : (
+                    <div className="callout warn">Bài học này chưa có tài liệu nào.</div>
+                  )}
+
+                  {current.lesson.body && (
+                    <div className="note-box">
+                      <h3>Ghi chú bài học</h3>
+                      <RichContent value={current.lesson.body} />
+                    </div>
+                  )}
+                </>
               ) : (
                 <>
                   {current.lesson?.embedUrl ? (

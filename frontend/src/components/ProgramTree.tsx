@@ -113,6 +113,7 @@ export function ProgramTree({ nodes, selectedId, onSelect, onMove, renderMeta }:
               {node.kind === 'assignment' && node.assignment && (
                 <span className="tree-meta">{node.assignment.questionCount} câu</span>
               )}
+              {node.isLocked && <span className="tree-meta">khoá</span>}
               {!node.isPublished && <span className="tree-meta">ẩn</span>}
             </div>
 

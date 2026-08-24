@@ -179,6 +179,23 @@
 
 .lesson-rich { margin-top: 22px; font-size: 15.5px; }
 
+/* ---------- Tài liệu tải về ---------- */
+.attach-list { display: flex; flex-direction: column; gap: 9px; margin: 22px 0; }
+.attach-item {
+  display: flex; align-items: center; gap: 11px;
+  padding: 13px 16px;
+  background: var(--c-panel);
+  border: 1px solid var(--c-line);
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.attach-item:hover { border-color: var(--c-blue); box-shadow: 0 2px 8px rgba(16, 24, 40, .08); }
+.attach-item svg { flex-shrink: 0; color: var(--c-blue); }
+.attach-name { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.attach-action { flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--c-blue); }
+
 .note-box {
   background: var(--c-panel);
   border: 1px solid var(--c-line);

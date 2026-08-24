@@ -339,6 +339,11 @@ tbody tr:hover { background: var(--surface-2); }
 .option-row input[type=text] { flex: 1; }
 .option-row .mark { flex-shrink: 0; }
 
+/* Dòng soạn tài liệu tải về: tên hiển thị + link, kèm nút sắp xếp/xoá. */
+.attach-row { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+.attach-row input[type=text] { flex: 1; min-width: 0; }
+.attach-row input[type=text]:first-child { flex: 0 1 34%; }
+
 /* ---------- Học viên ---------- */
 .learn { display: grid; grid-template-columns: 292px 1fr; gap: 18px; align-items: start; }
 @media (max-width: 900px) { .learn { grid-template-columns: 1fr; } }

@@ -63,6 +63,12 @@ export interface LessonInput {
   source: string
   durationMinutes: number
   body: string
+  attachments: LessonAttachmentInput[]
+}
+
+export interface LessonAttachmentInput {
+  name: string
+  url: string
 }
 
 export interface StructureItemInput {
@@ -181,6 +187,7 @@ export const api = {
     title: string
     description?: string
     isPublished?: boolean
+    isLocked?: boolean
     lesson?: LessonInput
     assignment?: AssignmentInput
   }) => post<TreeNode>(`/programs/${programId}/nodes`, body),
@@ -193,6 +200,7 @@ export const api = {
     title?: string
     description?: string
     isPublished?: boolean
+    isLocked?: boolean
     lesson?: LessonInput
     assignment?: AssignmentInput
   }) => patch<TreeNode>(`/nodes/${nodeId}`, body),

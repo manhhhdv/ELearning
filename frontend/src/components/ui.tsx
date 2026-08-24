@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
-import type { NodeKind, ContentType } from '../api/types'
-import { IconBook, IconDoc, IconFolder, IconSlide, IconTask, IconVideo } from './icons'
+import type { NodeKind, ContentType, LessonAttachment } from '../api/types'
+import { IconBook, IconDoc, IconDownload, IconFolder, IconSlide, IconTask, IconVideo } from './icons'
 
 export function Loading({ label = 'Đang tải…' }: { label?: string }) {
   return <div className="loading">{label}</div>
@@ -64,8 +64,25 @@ export function NodeIcon({ kind, contentType }: { kind: NodeKind; contentType?: 
     case 'document':
     case 'pdf': return <IconDoc />
     case 'richtext': return <IconBook />
+    case 'materials': return <IconDownload />
     default: return <IconVideo />
   }
+}
+
+/** Danh sách tài liệu tải về của bài học loại "Tài liệu tải về". */
+export function LessonAttachments({ items }: { items: LessonAttachment[] }) {
+  if (items.length === 0) return null
+  return (
+    <div className="attach-list">
+      {items.map((a, i) => (
+        <a className="attach-item" key={i} href={a.url} target="_blank" rel="noopener noreferrer">
+          <IconDownload size={17} />
+          <span className="attach-name">{a.name}</span>
+          <span className="attach-action">Tải về</span>
+        </a>
+      ))}
+    </div>
+  )
 }
 
 export function formatDate(value: string | null | undefined) {

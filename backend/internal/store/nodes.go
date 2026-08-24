@@ -14,7 +14,7 @@ import (
 
 const nodeColumns = `
 	n.id, n.program_id, n.parent_id, n.kind, n.slug, n.title, n.description, n.position,
-	n.is_published, n.created_at, n.updated_at`
+	n.is_published, n.is_locked, n.created_at, n.updated_at`
 
 type nodeScanner interface {
 	Scan(dest ...any) error
@@ -23,7 +23,7 @@ type nodeScanner interface {
 func scanNode(row nodeScanner) (*models.Node, error) {
 	var n models.Node
 	err := row.Scan(&n.ID, &n.ProgramID, &n.ParentID, &n.Kind, &n.Slug, &n.Title, &n.Description,
-		&n.Position, &n.IsPublished, &n.CreatedAt, &n.UpdatedAt)
+		&n.Position, &n.IsPublished, &n.IsLocked, &n.CreatedAt, &n.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (s *Store) ListNodes(ctx context.Context, programID uuid.UUID, publishedOnl
 
 func (s *Store) attachLessons(ctx context.Context, programID uuid.UUID, byID map[uuid.UUID]*models.Node) error {
 	rows, err := s.pool.Query(ctx, `
-		SELECT l.node_id, l.content_type, l.drive_file_id, l.embed_url, l.duration_minutes, l.body
+		SELECT l.node_id, l.content_type, l.drive_file_id, l.embed_url, l.duration_minutes, l.body, l.attachments
 		FROM lessons l JOIN nodes n ON n.id = l.node_id
 		WHERE n.program_id = $1`, programID)
 	if err != nil {
@@ -101,14 +101,24 @@ func (s *Store) attachLessons(ctx context.Context, programID uuid.UUID, byID map
 	for rows.Next() {
 		var id uuid.UUID
 		var l models.Lesson
-		if err := rows.Scan(&id, &l.ContentType, &l.DriveFileID, &l.EmbedURL, &l.DurationMinutes, &l.Body); err != nil {
+		if err := rows.Scan(&id, &l.ContentType, &l.DriveFileID, &l.EmbedURL, &l.DurationMinutes, &l.Body, &l.Attachments); err != nil {
 			return translate(err, "đọc bài học")
 		}
+		l.Attachments = lessonAttachments(l.Attachments)
 		if n, ok := byID[id]; ok {
 			n.Lesson = &l
 		}
 	}
 	return rows.Err()
+}
+
+// lessonAttachments đảm bảo cột jsonb luôn là mảng, không phải null,
+// để JSON trả về cho giao diện luôn có dạng danh sách.
+func lessonAttachments(list []models.LessonAttachment) []models.LessonAttachment {
+	if list == nil {
+		return []models.LessonAttachment{}
+	}
+	return list
 }
 
 func (s *Store) attachAssignments(ctx context.Context, programID uuid.UUID, byID map[uuid.UUID]*models.Node) error {
@@ -181,13 +191,14 @@ func (s *Store) GetNode(ctx context.Context, id uuid.UUID) (*models.Node, error)
 	case models.KindLesson:
 		var l models.Lesson
 		err = s.pool.QueryRow(ctx, `
-			SELECT content_type, drive_file_id, embed_url, duration_minutes, body
+			SELECT content_type, drive_file_id, embed_url, duration_minutes, body, attachments
 			FROM lessons WHERE node_id = $1`, id).
-			Scan(&l.ContentType, &l.DriveFileID, &l.EmbedURL, &l.DurationMinutes, &l.Body)
+			Scan(&l.ContentType, &l.DriveFileID, &l.EmbedURL, &l.DurationMinutes, &l.Body, &l.Attachments)
 		if err != nil && err != pgx.ErrNoRows {
 			return nil, translate(err, "đọc bài học")
 		}
 		if err == nil {
+			l.Attachments = lessonAttachments(l.Attachments)
 			n.Lesson = &l
 		}
 	case models.KindAssignment:
@@ -207,6 +218,7 @@ type SaveNodeParams struct {
 	Title       string
 	Description string
 	IsPublished bool
+	IsLocked    bool
 
 	Lesson     *models.Lesson
 	Assignment *models.Assignment
@@ -250,9 +262,9 @@ func (s *Store) CreateNode(ctx context.Context, p SaveNodeParams) (*models.Node,
 
 	var id uuid.UUID
 	err = tx.QueryRow(ctx, `
-		INSERT INTO nodes (program_id, parent_id, kind, slug, title, description, position, is_published)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-		p.ProgramID, p.ParentID, p.Kind, slug, p.Title, p.Description, position, p.IsPublished).Scan(&id)
+		INSERT INTO nodes (program_id, parent_id, kind, slug, title, description, position, is_published, is_locked)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+		p.ProgramID, p.ParentID, p.Kind, slug, p.Title, p.Description, position, p.IsPublished, p.IsLocked).Scan(&id)
 	if err != nil {
 		return nil, translate(err, "tạo nút")
 	}
@@ -264,9 +276,9 @@ func (s *Store) CreateNode(ctx context.Context, p SaveNodeParams) (*models.Node,
 			l = &models.Lesson{ContentType: "video"}
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO lessons (node_id, content_type, drive_file_id, embed_url, duration_minutes, body)
-			VALUES ($1, $2, $3, $4, $5, $6)`,
-			id, l.ContentType, l.DriveFileID, l.EmbedURL, l.DurationMinutes, l.Body)
+			INSERT INTO lessons (node_id, content_type, drive_file_id, embed_url, duration_minutes, body, attachments)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+			id, l.ContentType, l.DriveFileID, l.EmbedURL, l.DurationMinutes, l.Body, lessonAttachments(l.Attachments))
 	case models.KindAssignment:
 		a := p.Assignment
 		if a == nil {
@@ -291,6 +303,7 @@ type UpdateNodeParams struct {
 	Title       *string
 	Description *string
 	IsPublished *bool
+	IsLocked    *bool
 
 	Lesson     *models.Lesson
 	Assignment *models.Assignment
@@ -312,8 +325,9 @@ func (s *Store) UpdateNode(ctx context.Context, id uuid.UUID, p UpdateNodeParams
 		UPDATE nodes SET
 			title        = COALESCE($2, title),
 			description  = COALESCE($3, description),
-			is_published = COALESCE($4, is_published)
-		WHERE id = $1`, id, p.Title, p.Description, p.IsPublished)
+			is_published = COALESCE($4, is_published),
+			is_locked    = COALESCE($5, is_locked)
+		WHERE id = $1`, id, p.Title, p.Description, p.IsPublished, p.IsLocked)
 	if err != nil {
 		return nil, translate(err, "cập nhật nút")
 	}
@@ -321,15 +335,16 @@ func (s *Store) UpdateNode(ctx context.Context, id uuid.UUID, p UpdateNodeParams
 	if p.Lesson != nil && kind == models.KindLesson {
 		l := p.Lesson
 		_, err = tx.Exec(ctx, `
-			INSERT INTO lessons (node_id, content_type, drive_file_id, embed_url, duration_minutes, body)
-			VALUES ($1, $2, $3, $4, $5, $6)
+			INSERT INTO lessons (node_id, content_type, drive_file_id, embed_url, duration_minutes, body, attachments)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
 			ON CONFLICT (node_id) DO UPDATE SET
 				content_type = EXCLUDED.content_type,
 				drive_file_id = EXCLUDED.drive_file_id,
 				embed_url = EXCLUDED.embed_url,
 				duration_minutes = EXCLUDED.duration_minutes,
-				body = EXCLUDED.body`,
-			id, l.ContentType, l.DriveFileID, l.EmbedURL, l.DurationMinutes, l.Body)
+				body = EXCLUDED.body,
+				attachments = EXCLUDED.attachments`,
+			id, l.ContentType, l.DriveFileID, l.EmbedURL, l.DurationMinutes, l.Body, lessonAttachments(l.Attachments))
 		if err != nil {
 			return nil, translate(err, "cập nhật bài học")
 		}

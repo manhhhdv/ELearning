@@ -159,6 +159,13 @@ export const IconUpload = ({ size = 15, className }: IconProps) => (
   </svg>
 )
 
+export const IconDownload = ({ size = 15, className }: IconProps) => (
+  <svg {...svgProps(size, className)}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <path d="M7 11l5 5 5-5M12 4v12" />
+  </svg>
+)
+
 export const IconChart = ({ size = 15, className }: IconProps) => (
   <svg {...svgProps(size, className)}>
     <path d="M3 3v18h18" />

@@ -230,7 +230,7 @@ function AddNodeModal({
         kind,
         title: title.trim(),
         ...(kind === 'lesson'
-          ? { lesson: { contentType, source: source.trim(), durationMinutes: 0, body: '' } }
+          ? { lesson: { contentType, source: source.trim(), durationMinutes: 0, body: '', attachments: [] } }
           : {}),
         ...(kind === 'assignment'
           ? {
@@ -318,6 +318,8 @@ function AddNodeModal({
             </div>
             {contentType === 'richtext' ? (
               <div className="hint">Nội dung bài đọc được soạn ngay sau khi tạo, không cần link ngoài.</div>
+            ) : contentType === 'materials' ? (
+              <div className="hint">Danh sách tài liệu tải về được thêm ngay sau khi tạo, không cần link ở đây.</div>
             ) : (
               <div className="field">
                 <label htmlFor="a-src">Link Google Drive</label>
