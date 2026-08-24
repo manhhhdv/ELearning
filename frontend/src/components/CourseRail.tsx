@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 import type { TreeNode } from '../api/types'
 import { CONTENT_TYPE_LABEL } from '../api/types'
-import { IconCheck, IconChevron, IconDoc, IconSlide, IconTask, IconVideo } from './icons'
+import { IconBook, IconCheck, IconChevron, IconDoc, IconSlide, IconTask, IconVideo } from './icons'
 
 /** Một mục học được: bài học hoặc bài tập, kèm độ sâu để thụt lề. */
 export interface CourseItem {
@@ -64,6 +64,7 @@ export function itemIcon(node: TreeNode) {
     case 'slide': return <IconSlide size={16} />
     case 'document':
     case 'pdf': return <IconDoc size={16} />
+    case 'richtext': return <IconBook size={16} />
     default: return <IconVideo size={16} />
   }
 }

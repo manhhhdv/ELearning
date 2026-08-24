@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 
 import { api } from '../api/client'
 import type { Enrollment, Program, ProgramStatus, TreeNode, User } from '../api/types'
-import { ROLE_LABEL, STATUS_LABEL } from '../api/types'
+import { CONTENT_TYPE_LABEL, ROLE_LABEL, STATUS_LABEL } from '../api/types'
 import { isReadOnlyViewer, useAuth } from '../auth'
 import { PageHeader } from '../components/Layout'
 import { ImportStructureModal } from '../components/ImportStructureModal'
@@ -311,21 +311,23 @@ function AddNodeModal({
             <div className="field">
               <label htmlFor="a-ct">Loại nội dung</label>
               <select id="a-ct" value={contentType} onChange={(e) => setContentType(e.target.value)}>
-                <option value="video">Video</option>
-                <option value="slide">Slide trình chiếu</option>
-                <option value="document">Tài liệu</option>
-                <option value="pdf">PDF</option>
-                <option value="link">Liên kết ngoài</option>
+                {Object.entries(CONTENT_TYPE_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
               </select>
             </div>
-            <div className="field">
-              <label htmlFor="a-src">Link Google Drive</label>
-              <input
-                id="a-src" type="text" value={source}
-                onChange={(e) => setSource(e.target.value)}
-                placeholder="Có thể dán sau khi tạo"
-              />
-            </div>
+            {contentType === 'richtext' ? (
+              <div className="hint">Nội dung bài đọc được soạn ngay sau khi tạo, không cần link ngoài.</div>
+            ) : (
+              <div className="field">
+                <label htmlFor="a-src">Link Google Drive</label>
+                <input
+                  id="a-src" type="text" value={source}
+                  onChange={(e) => setSource(e.target.value)}
+                  placeholder="Có thể dán sau khi tạo"
+                />
+              </div>
+            )}
           </>
         )}
       </form>

@@ -2,7 +2,7 @@
 
 export type Role = 'admin' | 'trainer' | 'supervisor' | 'student'
 export type NodeKind = 'folder' | 'lesson' | 'assignment'
-export type ContentType = 'video' | 'slide' | 'document' | 'pdf' | 'link'
+export type ContentType = 'video' | 'slide' | 'document' | 'pdf' | 'link' | 'richtext'
 export type QuestionType = 'single_choice' | 'multi_choice' | 'essay'
 export type ProgramStatus = 'draft' | 'published' | 'archived'
 
@@ -257,6 +257,7 @@ export const CONTENT_TYPE_LABEL: Record<ContentType, string> = {
   document: 'Tài liệu',
   pdf: 'PDF',
   link: 'Liên kết ngoài',
+  richtext: 'Bài đọc tự soạn',
 }
 
 export const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {

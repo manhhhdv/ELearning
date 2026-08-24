@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
 import type { NodeKind, ContentType } from '../api/types'
-import { IconDoc, IconFolder, IconSlide, IconTask, IconVideo } from './icons'
+import { IconBook, IconDoc, IconFolder, IconSlide, IconTask, IconVideo } from './icons'
 
 export function Loading({ label = 'Đang tải…' }: { label?: string }) {
   return <div className="loading">{label}</div>
@@ -63,6 +63,7 @@ export function NodeIcon({ kind, contentType }: { kind: NodeKind; contentType?: 
     case 'slide': return <IconSlide />
     case 'document':
     case 'pdf': return <IconDoc />
+    case 'richtext': return <IconBook />
     default: return <IconVideo />
   }
 }

@@ -177,6 +177,8 @@
 }
 .player.doc { aspect-ratio: 4 / 3; background: var(--c-panel); border: 1px solid var(--c-line); }
 
+.lesson-rich { margin-top: 22px; font-size: 15.5px; }
+
 .note-box {
   background: var(--c-panel);
   border: 1px solid var(--c-line);

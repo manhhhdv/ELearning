@@ -10,6 +10,7 @@ import {
   IconCheck, IconChevron, IconExitFullscreen, IconFullscreen, IconPanelClose, IconPanelOpen,
 } from '../components/icons'
 import { LogoMark } from '../components/Logo'
+import { RichContent } from '../components/RichContent'
 import { Loading } from '../components/ui'
 
 export function CoursePage() {
@@ -237,23 +238,33 @@ export function CoursePage() {
                 <p className="prose prose-muted" style={{ marginTop: 14 }}>{current.description}</p>
               )}
 
-              {current.lesson?.embedUrl ? (
-                <iframe
-                  className={`player ${current.lesson.contentType === 'video' ? '' : 'doc'}`}
-                  src={current.lesson.embedUrl}
-                  title={current.title}
-                  allow="autoplay; fullscreen"
-                  allowFullScreen
-                />
+              {current.lesson?.contentType === 'richtext' ? (
+                current.lesson.body.trim() ? (
+                  <RichContent value={current.lesson.body} className="lesson-rich" />
+                ) : (
+                  <div className="callout warn">Bài học này chưa có nội dung.</div>
+                )
               ) : (
-                <div className="callout warn">Bài học này chưa được gắn nội dung.</div>
-              )}
+                <>
+                  {current.lesson?.embedUrl ? (
+                    <iframe
+                      className={`player ${current.lesson.contentType === 'video' ? '' : 'doc'}`}
+                      src={current.lesson.embedUrl}
+                      title={current.title}
+                      allow="autoplay; fullscreen"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <div className="callout warn">Bài học này chưa được gắn nội dung.</div>
+                  )}
 
-              {current.lesson?.body && (
-                <div className="note-box">
-                  <h3>Ghi chú bài học</h3>
-                  <div className="prose">{current.lesson.body}</div>
-                </div>
+                  {current.lesson?.body && (
+                    <div className="note-box">
+                      <h3>Ghi chú bài học</h3>
+                      <RichContent value={current.lesson.body} />
+                    </div>
+                  )}
+                </>
               )}
             </>
           ) : (

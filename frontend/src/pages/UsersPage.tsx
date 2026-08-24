@@ -4,6 +4,7 @@ import { api } from '../api/client'
 import type { IssuedCredentials } from '../api/client'
 import type { Role, User } from '../api/types'
 import { useAuth } from '../auth'
+import { ImportUsersModal } from '../components/ImportUsersModal'
 import { PageHeader } from '../components/Layout'
 import { IconPlus } from '../components/icons'
 import { EmptyState, ErrorAlert, Loading, Modal, formatDate } from '../components/ui'
@@ -16,6 +17,7 @@ export function UsersPage() {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [creating, setCreating] = useState(false)
+  const [importing, setImporting] = useState(false)
   // Mật khẩu thô chỉ hiện đúng một lần ngay sau khi tạo hoặc đặt lại.
   const [issued, setIssued] = useState<IssuedCredentials | null>(null)
 
@@ -72,9 +74,12 @@ export function UsersPage() {
         title="Người dùng"
         subtitle="Cấp tài khoản, phân vai trò và đặt lại mật khẩu"
         actions={
-          <button className="btn btn-primary" onClick={() => setCreating(true)}>
-            <IconPlus /> Cấp tài khoản
-          </button>
+          <>
+            <button className="btn" onClick={() => setImporting(true)}>Nhập từ file</button>{' '}
+            <button className="btn btn-primary" onClick={() => setCreating(true)}>
+              <IconPlus /> Cấp tài khoản
+            </button>
+          </>
         }
       />
 
@@ -168,6 +173,13 @@ export function UsersPage() {
         <CreateUserModal
           onClose={() => setCreating(false)}
           onCreated={async (result) => { setCreating(false); setIssued(result); await load() }}
+        />
+      )}
+
+      {importing && (
+        <ImportUsersModal
+          onClose={() => setImporting(false)}
+          onImported={() => { void load() }}
         />
       )}
 

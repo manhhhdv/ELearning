@@ -26,7 +26,7 @@ export const STRUCTURE_KIND_LABEL: Record<StructureItem['kind'], string> = {
   assignment: 'Bài tập',
 }
 
-const CONTENT_TYPES = ['video', 'slide', 'document', 'pdf', 'link']
+const CONTENT_TYPES = ['video', 'slide', 'document', 'pdf', 'link', 'richtext']
 
 /** Bỏ dấu tiếng Việt để nhận diện tên loại người dùng gõ tự do. */
 function normalize(text: string): string {
@@ -50,6 +50,7 @@ function parseContentType(cell: string): string | null {
   if (['document', 'tai lieu', 'doc', 'docx', 'van ban'].includes(v)) return 'document'
   if (['pdf'].includes(v)) return 'pdf'
   if (['link', 'lien ket', 'url'].includes(v)) return 'link'
+  if (['richtext', 'rich text', 'tu soan', 'bai doc', 'bai doc tu soan', 'markdown'].includes(v)) return 'richtext'
   return CONTENT_TYPES.includes(v) ? v : null
 }
 
@@ -104,7 +105,7 @@ export function parseStructure(raw: string): StructureParseResult {
 
     const contentType = kind === 'lesson' ? parseContentType(contentCell) : 'video'
     if (contentType === null) {
-      issues.push({ line: lineNo, message: `loại nội dung “${contentCell}” không hợp lệ (video / slide / document / pdf / link)` })
+      issues.push({ line: lineNo, message: `loại nội dung “${contentCell}” không hợp lệ (video / slide / document / pdf / link / richtext)` })
       return
     }
 

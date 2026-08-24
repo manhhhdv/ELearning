@@ -93,7 +93,7 @@ export function ImportStructureModal({ programId, folders, defaultParentId, onCl
           <li>Thứ tự cột: <b>Cấp · Loại · Tiêu đề · Loại nội dung · Link/Nguồn · Thời lượng · Mô tả</b>.</li>
           <li><b>Cấp</b> là số bậc trong cây: 1 nằm ngay trong mục đã chọn ở trên, 2 nằm trong thư mục cấp 1 gần nhất phía trên.</li>
           <li><b>Loại</b> ghi <code>Thư mục</code>, <code>Bài học</code> hoặc <code>Bài tập</code>. Chỉ thư mục mới chứa được mục con.</li>
-          <li>Bốn cột cuối chỉ dùng cho bài học: loại nội dung (<code>video/slide/document/pdf/link</code>), link chia sẻ Google Drive, số phút.</li>
+          <li>Bốn cột cuối chỉ dùng cho bài học: loại nội dung (<code>video/slide/document/pdf/link/richtext</code>), link chia sẻ Google Drive, số phút.</li>
           <li>Bài tập được tạo rỗng — mở từng bài để nhập câu hỏi sau.</li>
           <li>Dòng tiêu đề được bỏ qua tự động; mọi mục đều ở trạng thái đã xuất bản.</li>
         </ul>

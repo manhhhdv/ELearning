@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@fontsource/source-sans-3": "^5.3.0",
+    "dompurify": "^3.4.14",
+    "katex": "^0.18.4",
+    "marked": "^18.0.10",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.9.1"

@@ -91,7 +91,7 @@ Mỗi chương trình là một cây gồm ba loại nút:
 | Loại | Vai trò |
 |---|---|
 | **Thư mục** | Chương / phần — chỉ thư mục mới chứa được nút con |
-| **Bài học** | Nội dung nhúng iframe: video, slide, tài liệu, PDF, liên kết ngoài |
+| **Bài học** | Nội dung nhúng iframe (video, slide, tài liệu, PDF, liên kết ngoài) hoặc **bài đọc tự soạn** viết thẳng trong hệ thống |
 | **Bài tập** | Tập câu hỏi trắc nghiệm một đáp án / nhiều đáp án / tự luận |
 
 Kéo-thả để sắp xếp: thả **vào giữa** một thư mục để đưa vào trong, thả **sát mép trên/dưới** để chèn
@@ -160,6 +160,26 @@ viên* trong bài tập): tỉ lệ trả lời đúng, điểm trung bình, s�
 
 ---
 
+## Nhập tài khoản hàng loạt
+
+Nút **Nhập từ file** ở trang *Quản lý → Người dùng* (chỉ admin) cấp nhiều tài khoản một lần: tải lên
+file `.xlsx`/`.csv` hoặc dán thẳng vùng bảng đã copy từ Excel / Google Sheets. Thứ tự cột *Email · Họ
+và tên · Vai trò · Mật khẩu*; dòng tiêu đề được bỏ qua tự động, tối đa 500 dòng mỗi lần.
+
+- **Vai trò** nhận cả tiếng Việt lẫn tiếng Anh (`Học viên`, `Giảng viên`, `Giám sát`, `Quản trị viên`,
+  hay `student`, `trainer`…); để trống thì mặc định là Học viên.
+- **Mật khẩu** để trống thì hệ thống sinh ngẫu nhiên cho riêng dòng đó; tự đặt thì phải đủ 8 ký tự
+  gồm cả chữ và số. Mọi tài khoản mới đều bị buộc đổi mật khẩu ở lần đăng nhập đầu tiên.
+- Email sai định dạng, vai trò lạ hay email lặp trong file bị bắt lỗi **trước khi nhập**, kèm số dòng.
+
+Khác với nhập câu hỏi, mỗi dòng ở đây được xử lý **độc lập** chứ không gói trong một transaction —
+danh sách nhân sự thường có sẵn vài người đã có tài khoản, huỷ cả lô chỉ vì một dòng trùng sẽ rất bất
+tiện. Email đã tồn tại được **bỏ qua** (không ghi đè dữ liệu cũ), và bảng kết quả cuối cùng liệt kê
+từng dòng: đã tạo / bỏ qua / lỗi kèm lý do. Mật khẩu chỉ hiển thị **đúng một lần** ở bảng đó — nút
+*Tải file mật khẩu (.csv)* xuất danh sách tài khoản vừa tạo để gửi cho người dùng.
+
+---
+
 ## Bảng điều khiển quản trị
 
 Trang `/quan-tri` (mục *Bảng điều khiển* trong menu Quản lý) tổng hợp số liệu toàn hệ thống: số
@@ -176,6 +196,38 @@ email và vai trò tự tạo tài khoản **mà không cần sửa file `.env` 
 lưu trong bảng `app_settings`, ưu tiên hơn `.env` khi đã bật; tắt đi thì xoá cấu hình đã lưu và quay
 lại dùng `.env` (nếu máy chủ có khai báo sẵn). Client Secret không bao giờ trả về nguyên văn sau khi
 lưu — để trống ô này khi sửa các trường khác nghĩa là giữ nguyên secret đang có hiệu lực.
+
+---
+
+## Bài đọc tự soạn (markdown, LaTeX, media)
+
+Chọn *Loại nội dung* → **Bài đọc tự soạn** khi muốn viết nội dung ngay trong hệ thống thay vì nhúng
+file Drive. Ô soạn thảo có thanh công cụ, phím tắt (`Ctrl/Cmd + B` đậm, `+ I` nghiêng, `+ K` liên kết)
+và khung **xem trước trực tiếp** cạnh bên; nội dung lưu xuống là markdown thuần nên dễ sao chép,
+so sánh phiên bản và nhập từ file.
+
+| Gõ | Kết quả |
+|---|---|
+| `**đậm**`, `*nghiêng*`, `~~gạch ngang~~`, `` `mã` `` | Định dạng chữ |
+| `# Tiêu đề`, `- gạch đầu dòng`, `1. đánh số`, `- [ ] việc cần làm` | Cấu trúc, danh sách, ô tích |
+| `> trích dẫn`, ```` ```khối mã``` ````, bảng kiểu markdown | Trích dẫn, khối mã, bảng (tự cuộn ngang) |
+| `$a^2+b^2=c^2$`, `$$…$$` (hoặc `\(…\)`, `\[…\]`) | Công thức LaTeX dựng bằng KaTeX |
+| `![mô tả](link)` | Ảnh, video, audio, hoặc khung nhúng YouTube / Vimeo / Google Drive |
+| `> [!NOTE]` mở đầu trích dẫn | Hộp nhấn mạnh (NOTE, TIP, IMPORTANT, WARNING, CAUTION) |
+
+Loại media nhận theo đuôi file và tên miền: `.mp4/.webm/.mov` thành trình phát video, `.mp3/.wav/.m4a`
+thành trình phát audio, link YouTube/Vimeo/Drive thành iframe 16:9, còn lại là ảnh. Chú thích trong
+ngoặc kép — `![mô tả](link "chú thích")` — hiện thành dòng caption dưới media.
+
+Ghi chú của các loại bài học khác (ô *Ghi chú cho học viên*) dùng chung trình soạn thảo này, nên
+markdown và công thức cũng hiển thị được trong hộp *Ghi chú bài học* của trang học.
+
+Ký hiệu `$` đứng một mình (VD: `giá $150`) không bị hiểu nhầm thành công thức, và `$` bên trong khối
+mã giữ nguyên. HTML kết xuất luôn đi qua bộ lọc DOMPurify: chỉ iframe từ YouTube, Vimeo và Google
+Drive được giữ lại, link ngoài tự thêm `target="_blank" rel="noopener noreferrer"`.
+
+Nhập cấu trúc từ Excel: ghi `richtext` (hoặc `tự soạn`, `bài đọc`) ở cột *loại nội dung*, để trống cột
+link, rồi soạn nội dung sau khi nhập.
 
 ---
 

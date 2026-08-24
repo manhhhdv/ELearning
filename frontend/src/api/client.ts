@@ -90,6 +90,33 @@ export interface IssuedCredentials {
   password: string
 }
 
+export interface UserImportItem {
+  email: string
+  fullName: string
+  role: string
+  /** Bỏ trống để máy chủ sinh mật khẩu ngẫu nhiên cho dòng này. */
+  password: string
+}
+
+/** Kết quả của một dòng trong lô nhập tài khoản. */
+export interface UserImportResult {
+  row: number
+  email: string
+  fullName: string
+  role: string
+  status: 'created' | 'skipped' | 'failed'
+  /** Chỉ có ở dòng tạo mới thành công, và chỉ trả về đúng một lần. */
+  password: string
+  message: string
+}
+
+export interface UserImportReport {
+  created: number
+  skipped: number
+  failed: number
+  results: UserImportResult[]
+}
+
 export interface QuestionInput {
   /** Bỏ trống khi tạo mới thì máy chủ tự sinh mã C01, C02… */
   code?: string
@@ -117,6 +144,8 @@ export const api = {
   },
   createUser: (body: { email: string; fullName: string; role: string; password?: string }) =>
     post<IssuedCredentials>('/users', body),
+  importUsers: (items: UserImportItem[]) => post<UserImportReport>('/users/import', { items }),
+  importUsersFile: (file: File) => postFile<{ text: string }>('/users/import-file', file),
   updateUser: (id: string, body: { fullName?: string; role?: string; isActive?: boolean }) =>
     patch<User>(`/users/${id}`, body),
   resetPassword: (id: string, password?: string) =>

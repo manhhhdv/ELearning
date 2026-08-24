@@ -236,6 +236,15 @@ func buildLesson(in *lessonInput) (*models.Lesson, error) {
 		return nil, errValidation("Loại nội dung bài học không hợp lệ")
 	}
 
+	// Bài tự soạn không nhúng file bên ngoài: toàn bộ nội dung nằm trong Body.
+	if in.ContentType == "richtext" {
+		return &models.Lesson{
+			ContentType:     in.ContentType,
+			DurationMinutes: in.DurationMinutes,
+			Body:            in.Body,
+		}, nil
+	}
+
 	driveID, embedURL := util.BuildEmbedURL(in.ContentType, in.Source)
 	if trimmed(in.Source) != "" && embedURL == "" {
 		return nil, errValidation("Không nhận diện được link Google Drive. Hãy dán link chia sẻ hoặc ID file.")
@@ -286,7 +295,7 @@ func validNodeKind(kind string) bool {
 
 func validContentType(ct string) bool {
 	switch ct {
-	case "video", "slide", "document", "pdf", "link":
+	case "video", "slide", "document", "pdf", "link", "richtext":
 		return true
 	}
 	return false

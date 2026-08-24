@@ -7,6 +7,7 @@ import { CONTENT_TYPE_LABEL } from '../api/types'
 import { AssignmentResultsPanel } from './AssignmentResultsPanel'
 import { IconChart } from './icons'
 import { QuestionEditor } from './QuestionEditor'
+import { RichTextEditor } from './RichTextEditor'
 import { ErrorAlert, SuccessAlert } from './ui'
 
 const KIND_LABEL: Record<string, string> = {
@@ -45,6 +46,9 @@ export function NodeEditor({ node, onSaved, onDeleted, readOnly = false }: Props
   const [saved, setSaved] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [tab, setTab] = useState<'questions' | 'results'>('questions')
+
+  // Bài đọc tự soạn thay hẳn khung nhúng Google Drive bằng nội dung viết trong hệ thống.
+  const isRichText = contentType === 'richtext'
 
   // Nạp lại form khi người dùng chọn một nút khác trên cây.
   useEffect(() => {
@@ -163,36 +167,54 @@ export function NodeEditor({ node, onSaved, onDeleted, readOnly = false }: Props
                 </div>
               </div>
 
-              <div className="field">
-                <label htmlFor="n-src">Link Google Drive</label>
-                <input
-                  id="n-src" type="text" value={source}
-                  onChange={(e) => setSource(e.target.value)}
-                  placeholder="https://drive.google.com/file/d/…/view  hoặc  ID file"
-                />
-                <div className="hint">
-                  Dán link chia sẻ từ Google Drive / Google Slides — hệ thống tự chuyển thành liên kết nhúng.
-                  Nhớ đặt quyền chia sẻ file thành “Bất kỳ ai có đường liên kết”.
+              {isRichText ? (
+                <div className="hint" style={{ marginTop: -4 }}>
+                  Bài đọc tự soạn không cần file bên ngoài: nội dung viết thẳng bên dưới bằng
+                  markdown, có công thức LaTeX và media nhúng.
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="field">
+                    <label htmlFor="n-src">Link Google Drive</label>
+                    <input
+                      id="n-src" type="text" value={source}
+                      onChange={(e) => setSource(e.target.value)}
+                      placeholder="https://drive.google.com/file/d/…/view  hoặc  ID file"
+                    />
+                    <div className="hint">
+                      Dán link chia sẻ từ Google Drive / Google Slides — hệ thống tự chuyển thành liên kết nhúng.
+                      Nhớ đặt quyền chia sẻ file thành “Bất kỳ ai có đường liên kết”.
+                    </div>
+                  </div>
 
-              {node.lesson?.embedUrl && (
-                <div className="field">
-                  <label>Xem trước</label>
-                  <iframe
-                    className={`embed-frame ${contentType === 'video' ? '' : 'doc'}`}
-                    src={node.lesson.embedUrl}
-                    title={node.title}
-                    allow="autoplay; fullscreen"
-                    allowFullScreen
-                  />
-                  <div className="hint mono" style={{ wordBreak: 'break-all' }}>{node.lesson.embedUrl}</div>
-                </div>
+                  {node.lesson?.embedUrl && (
+                    <div className="field">
+                      <label>Xem trước</label>
+                      <iframe
+                        className={`embed-frame ${contentType === 'video' ? '' : 'doc'}`}
+                        src={node.lesson.embedUrl}
+                        title={node.title}
+                        allow="autoplay; fullscreen"
+                        allowFullScreen
+                      />
+                      <div className="hint mono" style={{ wordBreak: 'break-all' }}>{node.lesson.embedUrl}</div>
+                    </div>
+                  )}
+                </>
               )}
 
               <div className="field">
-                <label htmlFor="n-body">Ghi chú cho học viên</label>
-                <textarea id="n-body" value={body} onChange={(e) => setBody(e.target.value)} />
+                <label htmlFor="n-body">{isRichText ? 'Nội dung bài học' : 'Ghi chú cho học viên'}</label>
+                <RichTextEditor
+                  id="n-body"
+                  value={body}
+                  onChange={setBody}
+                  disabled={readOnly}
+                  rows={isRichText ? 20 : 8}
+                  placeholder={isRichText
+                    ? 'Viết nội dung bài học ở đây — dùng thanh công cụ hoặc gõ markdown trực tiếp.'
+                    : 'Ghi chú thêm cho học viên (không bắt buộc).'}
+                />
               </div>
             </>
           )}

@@ -76,6 +76,8 @@ func (s *Server) Router() http.Handler {
 				r.Use(s.mw.RequireRole(models.RoleAdmin))
 				r.Get("/", s.handleListUsers)
 				r.Post("/", s.handleCreateUser)
+				r.Post("/import", s.handleImportUsers)
+				r.Post("/import-file", s.handleImportUsersFile)
 				r.Patch("/{userID}", s.handleUpdateUser)
 				r.Post("/{userID}/password", s.handleResetPassword)
 				r.Delete("/{userID}", s.handleDeleteUser)
