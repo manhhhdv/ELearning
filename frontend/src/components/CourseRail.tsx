@@ -53,7 +53,7 @@ export function learningSequence(tree: TreeNode[]): TreeNode[] {
  * người soạn chưa tự đánh số, tránh ra chuỗi kiểu "Chương 1: Chương 1 — ...".
  */
 export function moduleHeading(title: string, order: number): string {
-  const numbered = /^\s*(chương|chuong|module|phần|phan|tuần|tuan|unit|bài|bai|part)\b/i.test(title)
+  const numbered = /^\s*(chương|chuong|chủ đề|chu de|ôn tập|on tap|module|phần|phan|tuần|tuan|unit|bài|bai|part)(?![\p{L}\d])/iu.test(title)
     || /^\s*\d+\s*[.):\-–—]/.test(title)
   return numbered ? title : `Chương ${order}: ${title}`
 }

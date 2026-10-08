@@ -91,7 +91,7 @@ export function SignupSettingsPage() {
                   />
                   <div className="hint">
                     Cách nhau bằng dấu phẩy. <b>Để trống nghĩa là bất kỳ ai biết địa chỉ trang web
-                    cũng tạo được tài khoản</b> — nên đặt giới hạn domain của trường.
+                    cũng tạo được tài khoản</b> — nên đặt giới hạn domain email của đơn vị.
                   </div>
                 </div>
               </fieldset>

@@ -6,7 +6,7 @@ import type { Role } from '../api/types'
 import { useAuth } from '../auth'
 import { ErrorAlert, SuccessAlert } from '../components/ui'
 import { IconGoogle } from '../components/icons'
-import { Logo } from '../components/Logo'
+import { Logo, LogoMark } from '../components/Logo'
 
 /**
  * Vai trò người dùng chọn ở trang đăng nhập. Đây chỉ là lựa chọn để hệ thống
@@ -113,15 +113,15 @@ export function LoginPage() {
     <div className="login-wrap">
       <div className="login-hero">
         <div className="login-hero-badge">
-          <span className="login-hero-crest">TP</span>
+          <LogoMark size={56} />
           <div>
-            <div className="school-tag">Trường THPT</div>
-            <div className="school-name">Trần Phú - Hoàn Kiếm</div>
+            <div className="hero-tag">Học tập trực tuyến</div>
+            <div className="hero-name">Từ lớp 1 đến lớp 12</div>
           </div>
         </div>
-        <h1>Hệ thống <span>đào tạo trực tuyến</span> của nhà trường</h1>
+        <h1>Học và ôn luyện <span>mọi lúc, mọi nơi</span></h1>
         <p className="tagline">
-          Nơi thầy cô giao bài, học sinh học tập và ôn luyện mọi lúc, mọi nơi.
+          Bài giảng, bài tập theo Chương trình GDPT 2018 cùng trợ lý AI đồng hành với thầy cô và học sinh.
         </p>
         <div className="login-hero-features">
           <div className="login-hero-feature">
@@ -137,8 +137,8 @@ export function LoginPage() {
             <div><b>Theo dõi kết quả</b><span>Thống kê tiến độ rõ ràng</span></div>
           </div>
           <div className="login-hero-feature">
-            <span className="ico">🏫</span>
-            <div><b>Kết nối nhà trường</b><span>Giáo viên - học sinh - phụ huynh</span></div>
+            <span className="ico">🤖</span>
+            <div><b>Trợ lý AI</b><span>Soạn bài, ra đề, giải đáp thắc mắc</span></div>
           </div>
         </div>
       </div>

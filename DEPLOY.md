@@ -295,94 +295,61 @@ Chỉ cần sửa một chỗ khi đổi domain backend: `BACKEND_ORIGIN` trong
 
 ---
 
-## 4C. Phương án thay thế: tự host frontend bằng Nginx trên cùng server (domain hoctap.space)
+## 4C. Deployment troly.hoctap.space (Nginx + Docker trên cùng server)
 
-> **Độc lập với mục 1–6**: mục này mô tả một deployment **khác, riêng biệt**, dùng domain
-> `hoctap.space`. Nó không liên quan và không dùng chung cấu hình với Worker `daotao.space` ở mục 4
-> (`frontend/wrangler.jsonc`) hay backend/domain đã cấu hình theo `daotao.space` ở các mục khác —
-> nếu server/domain này là một môi trường tách biệt, cần tạo `backend/.env.production` và `.env`
-> riêng (xem mục 1), không tái sử dụng file của deployment `daotao.space`.
-
-Thay vì Cloudflare Worker (mục 4), có thể phục vụ frontend tĩnh bằng **Nginx cài trực tiếp trên
-server** (không phải trong Docker), cùng server với backend/Postgres — dùng khi muốn domain
-`hoctap.space` trỏ thẳng vào server này thay vì Cloudflare, hoặc không muốn phụ thuộc Cloudflare
-Worker. Kiến trúc:
+> **Độc lập với mục 1–6**: đây là một deployment **riêng**, domain `troly.hoctap.space`, server
+> `thviet@210.245.53.88:2222`, thư mục `/workspace/thviet/2026/troly-hoctap-space`. Có compose
+> project, container, image, cổng và database riêng — không dùng chung gì với deployment khác
+> chạy cùng server.
 
 ```
 Trình duyệt
-   │  https://hoctap.space
+   │  https://troly.hoctap.space
    ▼
-Nginx (host, cổng 80/443, TLS bằng certbot/Let's Encrypt)
-   ├─ /api/*  → proxy_pass http://127.0.0.1:8082  (container backend, xem docker-compose.prod.yml)
-   └─ còn lại → static files /var/www/hoctap.space/dist  (SPA fallback về index.html)
+Nginx (host, cổng 80/443, TLS bằng certbot)
+   ├─ /api/*  → 127.0.0.1:8093  (container elearning_api_troly + elearning_pg_troly)
+   └─ còn lại → /workspace/thviet/2026/troly-hoctap-space/frontend/dist  (SPA fallback)
 ```
-
-Vì frontend và backend cùng origin (`hoctap.space`), không cần lớp proxy `/api/*` kiểu Worker như
-mục 5 — `frontend/src/api/client.ts` gọi `fetch('/api/...')` tương đối, Nginx tự route sang backend.
-
-Các file liên quan:
 
 | File | Dùng để |
 |---|---|
-| [`deploy/nginx-hoctap.space.conf`](deploy/nginx-hoctap.space.conf) | Cấu hình Nginx: static assets + proxy `/api/*` |
-| [`deploy/deploy-frontend-nginx.sh`](deploy/deploy-frontend-nginx.sh) | Build frontend rồi rsync `dist/` lên webroot server |
+| [`deploy/troly/docker-compose.yml`](deploy/troly/docker-compose.yml) | Backend + Postgres của deployment này |
+| [`deploy/troly/env.example`](deploy/troly/env.example) | Mẫu `.env` (mật khẩu Postgres, cổng) |
+| [`deploy/troly/backend.env.example`](deploy/troly/backend.env.example) | Mẫu `backend.env` (domain, JWT, admin, seed dữ liệu mẫu) |
+| [`deploy/troly/nginx-troly.hoctap.space.conf`](deploy/troly/nginx-troly.hoctap.space.conf) | Site Nginx: static + proxy `/api/*` |
+| [`deploy/deploy-troly-hoctap-space.sh`](deploy/deploy-troly-hoctap-space.sh) | Script khởi tạo và cập nhật |
 
-**Bước 1 — cài Nginx + tạo webroot trên server** (một lần):
+**Điều kiện**: bản ghi A của `troly.hoctap.space` trỏ vào IP server (DNS only để certbot xác thực
+qua cổng 80); server đã có Docker, Nginx, certbot.
 
-```bash
-sudo apt update && sudo apt install -y nginx certbot python3-certbot-nginx
-sudo mkdir -p /var/www/hoctap.space
-sudo chown "$(whoami)" /var/www/hoctap.space
-```
-
-**Bước 2 — trỏ DNS**: bản ghi A (và AAAA nếu có IPv6) của `hoctap.space` và `www.hoctap.space` trỏ
-thẳng vào IP server, **DNS only** (nếu dùng Cloudflare DNS, tắt proxy cam ☁️) để certbot xác thực
-ACME HTTP‑01 qua cổng 80.
-
-**Bước 3 — cài đặt site Nginx** (một lần, trên server, từ thư mục repo hoặc scp file cấu hình lên):
+**Lần đầu** — tạo thư mục, sinh `.env`/`backend.env` với mật khẩu ngẫu nhiên, cài site Nginx, xin
+TLS, rồi build + đẩy backend và frontend:
 
 ```bash
-sudo cp deploy/nginx-hoctap.space.conf /etc/nginx/sites-available/hoctap.space
-sudo ln -s /etc/nginx/sites-available/hoctap.space /etc/nginx/sites-enabled/hoctap.space
-sudo nginx -t && sudo systemctl reload nginx
+ADMIN_EMAIL=admin@example.com deploy/deploy-troly-hoctap-space.sh --init
 ```
 
-**Bước 4 — xin TLS bằng certbot** (một lần; certbot tự sửa file cấu hình để thêm `listen 443` +
-đường dẫn chứng chỉ, và tự cài cron/timer gia hạn):
+Mật khẩu admin khởi tạo được sinh ngẫu nhiên và chỉ nằm trong `backend.env` trên server:
 
 ```bash
-sudo certbot --nginx -d hoctap.space -d www.hoctap.space
+ssh -p 2222 thviet@210.245.53.88 grep SEED_ADMIN /workspace/thviet/2026/troly-hoctap-space/backend.env
 ```
 
-**Bước 5 — build + đẩy frontend lên webroot** (chạy từ máy dev/CI, không cần SSH tay):
+`SEED_SAMPLE_SUBJECTS=true` nên lần khởi động đầu tạo sẵn các lớp học mẫu lớp 1–12 (Toán, Tiếng
+Việt/Ngữ văn, Tiếng Anh), mỗi lớp có chương, bài giảng và bài tập ôn tập.
+
+**Các lần sau** — chỉ cập nhật phiên bản:
 
 ```bash
-deploy/deploy-frontend-nginx.sh user@server
+deploy/deploy-troly-hoctap-space.sh                  # cả backend + frontend
+deploy/deploy-troly-hoctap-space.sh --frontend-only
 ```
-
-Script tự `npm run build` rồi `rsync` `frontend/dist/` sang `/var/www/hoctap.space/dist` trên
-server (đổi webroot bằng `--webroot`, đổi cổng SSH bằng `--ssh-opts "-p 2222"`). Chạy lại đúng lệnh
-này mỗi lần deploy phiên bản frontend mới.
-
-**Backend**: vẫn deploy như mục 1–2 (`docker compose -f docker-compose.prod.yml up -d --build`),
-bind ở `127.0.0.1:8082` — **không cần** overlay Tunnel/Caddy ở mục 3 nữa vì Nginx trên host đã lo
-TLS + expose ra Internet trực tiếp.
-
-**Biến môi trường backend cần đổi** trong `backend/.env.production` (so với DEPLOY.md mục 1) vì giờ
-frontend và backend cùng domain:
-
-| Biến | Giá trị |
-|---|---|
-| `FRONTEND_URL` | `https://hoctap.space` |
-| `ALLOW_ORIGINS` | `https://hoctap.space` |
-| `GOOGLE_REDIRECT_URL` | `https://hoctap.space/api/auth/google/callback` |
 
 **Kiểm tra:**
 
 ```bash
-curl -I https://hoctap.space
-curl https://hoctap.space/api/health
-sudo nginx -t
+curl -I https://troly.hoctap.space
+curl https://troly.hoctap.space/api/health
 ```
 
 ---

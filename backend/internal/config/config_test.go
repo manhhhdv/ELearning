@@ -2,7 +2,7 @@ package config
 
 import "testing"
 
-// TestSeedSampleSubjectsDefault kiểm tra cờ tạo dữ liệu mẫu (4 môn học thử
+// TestSeedSampleSubjectsDefault kiểm tra cờ tạo dữ liệu mẫu (lớp học mẫu lớp 1–12, thử
 // nghiệm): mặc định bật ở mọi môi trường trừ production, và SEED_SAMPLE_SUBJECTS
 // luôn ghi đè tường minh được — kể cả để chủ động bật ở production khi cần
 // seed dữ liệu demo lên đó.

@@ -273,39 +273,25 @@ func nullableUUID(id uuid.UUID) *uuid.UUID {
 	return &id
 }
 
-// SampleSubject mô tả một lớp học mẫu tạo sẵn cho môi trường phát triển /
-// thử nghiệm, để có ngay dữ liệu demo thay vì phải tạo tay từng lớp.
-type SampleSubject struct {
-	Code        string
-	Title       string
-	Description string
-}
-
-// SampleSubjects là bốn môn học lớp 10 quen thuộc, nội dung bám theo Chương
-// trình giáo dục phổ thông 2018 — đủ để thử các chức năng tạo bài giảng, ra
-// đề và ghi danh mà không cần dữ liệu thật. Chọn lớp 10 vì đây là năm đầu
-// tiên cả bốn môn này tách riêng (THCS gộp Vật lý, Hóa học vào môn Khoa học
-// tự nhiên) nên tên lớp học có thể ghi thống nhất "lớp 10".
-var SampleSubjects = []SampleSubject{
-	{Code: "TOAN", Title: "Toán lớp 10", Description: "Lớp học mẫu môn Toán lớp 10 theo Chương trình GDPT 2018, dùng để thử nghiệm các chức năng của hệ thống."},
-	{Code: "NGUVAN", Title: "Ngữ văn lớp 10", Description: "Lớp học mẫu môn Ngữ văn lớp 10 theo Chương trình GDPT 2018, dùng để thử nghiệm các chức năng của hệ thống."},
-	{Code: "VATLY", Title: "Vật lý lớp 10", Description: "Lớp học mẫu môn Vật lý lớp 10 theo Chương trình GDPT 2018, dùng để thử nghiệm các chức năng của hệ thống."},
-	{Code: "HOAHOC", Title: "Hóa học lớp 10", Description: "Lớp học mẫu môn Hóa học lớp 10 theo Chương trình GDPT 2018, dùng để thử nghiệm các chức năng của hệ thống."},
-}
-
-// EnsureSampleSubjects tạo các lớp học mẫu trong SampleSubjects nếu chưa có
-// (so theo mã, không phân biệt hoa thường); lớp đã tồn tại thì đồng bộ lại
-// tên/mô tả theo đúng SampleSubjects hiện tại (lớp này do chính cơ chế seed
-// quản lý, nên cập nhật theo mỗi lần đổi nội dung mẫu là hợp lý). Sau đó thêm
-// bài giảng/bài tập mẫu (xem sample_content.go) cho lớp nào vẫn còn trống —
-// lớp đã có nội dung (do seed lần trước hoặc do người dùng tự soạn) thì bỏ
-// qua êm, không đụng vào. An toàn khi gọi lại nhiều lần lúc khởi động server.
+// EnsureSampleSubjects tạo các lớp học mẫu (Toán, Tiếng Việt/Ngữ văn, Tiếng
+// Anh từ lớp 1 đến lớp 12, xem sampleCourses) nếu chưa có (so theo mã, không
+// phân biệt hoa thường); lớp đã tồn tại thì đồng bộ lại tên/mô tả theo dữ liệu
+// mẫu hiện tại (lớp này do chính cơ chế seed quản lý, nên cập nhật theo mỗi lần
+// đổi nội dung mẫu là hợp lý). Sau đó thêm chương/bài giảng/bài tập mẫu (xem
+// sample_content.go) cho lớp nào vẫn còn trống — lớp đã có nội dung (do seed
+// lần trước hoặc do người dùng tự soạn) thì bỏ qua êm, không đụng vào. An toàn
+// khi gọi lại nhiều lần lúc khởi động server.
 func (s *Store) EnsureSampleSubjects(ctx context.Context, createdBy uuid.UUID) error {
-	for _, subj := range SampleSubjects {
+	// Tạo theo thứ tự ngược: danh sách lớp học sắp theo lần cập nhật gần nhất,
+	// nên lớp tạo sau cùng (Toán lớp 1) sẽ đứng đầu danh mục.
+	courses := sampleCourses()
+	for i := len(courses) - 1; i >= 0; i-- {
+		subj := courses[i]
 		p, err := s.CreateProgram(ctx, CreateProgramParams{
 			Code:            subj.Code,
 			Title:           subj.Title,
 			Description:     subj.Description,
+			CoverURL:        "/covers/" + subj.Cover + ".svg",
 			Status:          "published",
 			AllowSelfEnroll: true,
 			CreatedBy:       createdBy,
@@ -326,7 +312,7 @@ func (s *Store) EnsureSampleSubjects(ctx context.Context, createdBy uuid.UUID) e
 				}
 			}
 		}
-		if err := s.ensureSampleContent(ctx, p.ID, subj.Code); err != nil {
+		if err := s.ensureSampleContent(ctx, p.ID, subj); err != nil {
 			return fmt.Errorf("tạo nội dung mẫu %s: %w", subj.Code, err)
 		}
 	}

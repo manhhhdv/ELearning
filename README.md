@@ -243,7 +243,7 @@ duyệt), tắt thì `sessionStorage` (mất khi đóng tab).
 
 **Đăng ký tài khoản** mặc định **tắt**, bật ở **Quản lý → Đăng ký tài khoản**. Tài khoản tự đăng ký
 luôn có vai trò **Học viên** và dùng được ngay; quyền Giảng viên hoặc Quản trị viên vẫn phải do
-admin nâng cấp. Nên đặt **giới hạn domain email** của trường — để trống nghĩa là bất kỳ ai biết địa
+admin nâng cấp. Nên đặt **giới hạn domain email** của đơn vị — để trống nghĩa là bất kỳ ai biết địa
 chỉ trang web cũng tạo được tài khoản.
 
 **Quên mật khẩu** không gửi email (hệ thống chưa cấu hình SMTP). Người dùng gửi yêu cầu kèm lời

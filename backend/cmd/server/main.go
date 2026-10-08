@@ -101,7 +101,7 @@ func seedAdmin(ctx context.Context, st *store.Store, cfg *config.Config) error {
 	return nil
 }
 
-// seedSampleSubjects tạo sẵn vài lớp học mẫu (Toán, Ngữ văn, Vật lý, Hóa học)
+// seedSampleSubjects tạo sẵn các lớp học mẫu lớp 1–12 (Toán, Tiếng Việt/Ngữ văn, Tiếng Anh)
 // khi cfg.SeedSampleSubjects bật, để có ngay dữ liệu thử nghiệm cho các chức
 // năng tạo bài giảng / ra đề / ghi danh thay vì phải tạo tay từng lớp. Bật
 // mặc định ở mọi môi trường trừ production; đặt SEED_SAMPLE_SUBJECTS=true để

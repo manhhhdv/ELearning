@@ -1,0 +1,56 @@
+# Compose cho deployment troly.hoctap.space (backend + Postgres), đặt tại thư mục
+# /workspace/thviet/2026/troly-hoctap-space trên server — TÁCH BIỆT hoàn toàn với các deployment
+# khác cùng server (khác project name, container, image, cổng và volume database).
+#
+# Image backend không build trên server mà được build ở máy dev rồi nạp bằng `docker load`
+# (xem deploy/deploy-troly-hoctap-space.sh). Cạnh file này trên server cần có:
+#   .env          POSTGRES_PASSWORD=...   (xem deploy/troly/env.example)
+#   backend.env   cấu hình backend        (xem deploy/troly/backend.env.example)
+
+name: elearning-troly
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: elearning_pg_troly
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-elearning}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Thiếu POSTGRES_PASSWORD trong .env}
+      POSTGRES_DB: ${POSTGRES_DB:-elearning}
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-elearning} -d ${POSTGRES_DB:-elearning}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [backend_net]
+
+  backend:
+    image: elearning-backend-troly:${IMAGE_TAG:-latest}
+    container_name: elearning_api_troly
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - backend.env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-elearning}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-elearning}?sslmode=disable
+    networks: [backend_net]
+    ports:
+      # Nginx trên host proxy /api/* sang cổng này (xem deploy/troly/nginx-troly.hoctap.space.conf).
+      - "127.0.0.1:${BACKEND_PORT_HOST:-8093}:8082"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+networks:
+  backend_net:
+
+volumes:
+  pgdata:

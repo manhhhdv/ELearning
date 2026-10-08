@@ -173,7 +173,7 @@ export function WorkspacePage() {
               <ShortcutCard
                 color="amber"
                 icon={<IconDoc />} title="Kho tài liệu"
-                desc="Tài liệu dùng chung của trường"
+                desc="Tài liệu dùng chung"
                 onClick={() => navigate('/tai-lieu')}
               />
             </>
@@ -200,7 +200,7 @@ export function WorkspacePage() {
               <ShortcutCard
                 color="amber"
                 icon={<IconDoc />} title="Kho tài liệu"
-                desc="Tài liệu dùng chung của trường"
+                desc="Tài liệu dùng chung"
                 onClick={() => navigate('/tai-lieu')}
               />
             </>
