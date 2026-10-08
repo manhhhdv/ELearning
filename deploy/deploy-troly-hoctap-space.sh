@@ -8,7 +8,7 @@
 #                              --còn lại--> /workspace/thviet/2026/troly-hoctap-space/frontend/dist
 #
 # Dùng:
-#   ADMIN_EMAIL=ban@example.com deploy/deploy-troly-hoctap-space.sh --init   # lần đầu
+#   deploy/deploy-troly-hoctap-space.sh --init --admin-email ban@example.com   # lần đầu
 #   deploy/deploy-troly-hoctap-space.sh                  # cập nhật cả backend + frontend
 #   deploy/deploy-troly-hoctap-space.sh --backend-only   # chỉ build + ship backend
 #   deploy/deploy-troly-hoctap-space.sh --frontend-only  # chỉ build + đẩy frontend
@@ -37,10 +37,11 @@ DO_FRONTEND=1
 while [ $# -gt 0 ]; do
   case "$1" in
     --init) DO_INIT=1; shift ;;
+    --admin-email) ADMIN_EMAIL="${2:-}"; shift 2 ;;
     --backend-only) DO_FRONTEND=0; shift ;;
     --frontend-only) DO_BACKEND=0; shift ;;
     -h|--help)
-      echo "Dùng: $0 [--init] [--backend-only] [--frontend-only]" >&2
+      echo "Dùng: $0 [--init --admin-email EMAIL] [--backend-only] [--frontend-only]" >&2
       exit 1
       ;;
     *) echo "Không hiểu tuỳ chọn: $1" >&2; exit 1 ;;
@@ -53,7 +54,7 @@ SCP_OPTS=(-P "${SSH_PORT}")
 TAG="$(date +%Y%m%d-%H%M%S)"
 
 if [ "${DO_INIT}" -eq 1 ]; then
-  : "${ADMIN_EMAIL:?Đặt ADMIN_EMAIL=<email quản trị> khi chạy --init}"
+  : "${ADMIN_EMAIL:?Thiếu email quản trị: thêm --admin-email <email> khi chạy --init}"
 
   echo "==> [init] Kiểm tra cổng ${BACKEND_PORT_HOST} còn trống trên server"
   if ssh "${SSH_OPTS[@]}" "${SERVER}" "ss -ltn | awk '{print \$4}' | grep -q ':${BACKEND_PORT_HOST}\$'"; then

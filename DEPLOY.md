@@ -326,7 +326,7 @@ qua cổng 80); server đã có Docker, Nginx, certbot.
 TLS, rồi build + đẩy backend và frontend:
 
 ```bash
-ADMIN_EMAIL=admin@example.com deploy/deploy-troly-hoctap-space.sh --init
+deploy/deploy-troly-hoctap-space.sh --init --admin-email admin@example.com
 ```
 
 Mật khẩu admin khởi tạo được sinh ngẫu nhiên và chỉ nằm trong `backend.env` trên server:
