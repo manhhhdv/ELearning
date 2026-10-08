@@ -35,7 +35,7 @@ func (s *Store) getAssignment(ctx context.Context, nodeID uuid.UUID) (*models.As
 // ListQuestions trả về câu hỏi của một bài tập theo đúng thứ tự đã sắp.
 func (s *Store) ListQuestions(ctx context.Context, assignmentID uuid.UUID) ([]*models.Question, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, code, type, prompt, points, position, explanation
+		SELECT id, code, type, prompt, points, level, position, explanation, sample_answer, rubric
 		FROM questions WHERE assignment_id = $1 ORDER BY position, created_at`, assignmentID)
 	if err != nil {
 		return nil, translate(err, "liệt kê câu hỏi")
@@ -46,7 +46,8 @@ func (s *Store) ListQuestions(ctx context.Context, assignmentID uuid.UUID) ([]*m
 	byID := map[uuid.UUID]*models.Question{}
 	for rows.Next() {
 		var q models.Question
-		if err := rows.Scan(&q.ID, &q.Code, &q.Type, &q.Prompt, &q.Points, &q.Position, &q.Explanation); err != nil {
+		if err := rows.Scan(&q.ID, &q.Code, &q.Type, &q.Prompt, &q.Points, &q.Level,
+			&q.Position, &q.Explanation, &q.SampleAnswer, &q.Rubric); err != nil {
 			return nil, translate(err, "đọc câu hỏi")
 		}
 		q.Options = []*models.QuestionOption{}
@@ -89,12 +90,17 @@ func (s *Store) ListQuestions(ctx context.Context, assignmentID uuid.UUID) ([]*m
 type SaveQuestionParams struct {
 	AssignmentID uuid.UUID
 	// Để trống thì hệ thống tự sinh mã kế tiếp dạng C01, C02…
-	Code        string
-	Type        string
-	Prompt      string
-	Points      float64
+	Code   string
+	Type   string
+	Prompt string
+	Points float64
+	// Mức độ nhận thức; rỗng nghĩa là chưa phân loại.
+	Level       string
 	Explanation string
-	Options     []QuestionOptionInput
+	// Chỉ dùng cho câu tự luận.
+	SampleAnswer string
+	Rubric       string
+	Options      []QuestionOptionInput
 }
 
 type QuestionOptionInput struct {
@@ -125,9 +131,11 @@ func (s *Store) CreateQuestion(ctx context.Context, p SaveQuestionParams) (*mode
 
 	var id uuid.UUID
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO questions (assignment_id, code, type, prompt, points, position, explanation)
-		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-		p.AssignmentID, code, p.Type, p.Prompt, p.Points, position, p.Explanation).Scan(&id); err != nil {
+		INSERT INTO questions (assignment_id, code, type, prompt, points, position, explanation,
+		                       level, sample_answer, rubric)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+		p.AssignmentID, code, p.Type, p.Prompt, p.Points, position, p.Explanation,
+		p.Level, p.SampleAnswer, p.Rubric).Scan(&id); err != nil {
 		return nil, translate(err, "tạo câu hỏi")
 	}
 	if err := replaceOptions(ctx, tx, id, p.Type, p.Options); err != nil {
@@ -150,9 +158,10 @@ func (s *Store) UpdateQuestion(ctx context.Context, id uuid.UUID, p SaveQuestion
 	tag, err := tx.Exec(ctx, `
 		UPDATE questions
 		SET type = $2, prompt = $3, points = $4, explanation = $5,
-		    code = CASE WHEN $6 = '' THEN code ELSE $6 END
+		    code = CASE WHEN $6 = '' THEN code ELSE $6 END,
+		    level = $7, sample_answer = $8, rubric = $9
 		WHERE id = $1`,
-		id, p.Type, p.Prompt, p.Points, p.Explanation, p.Code)
+		id, p.Type, p.Prompt, p.Points, p.Explanation, p.Code, p.Level, p.SampleAnswer, p.Rubric)
 	if err != nil {
 		return nil, translate(err, "cập nhật câu hỏi")
 	}
@@ -190,8 +199,10 @@ func replaceOptions(ctx context.Context, tx pgx.Tx, questionID uuid.UUID, qType 
 func (s *Store) GetQuestion(ctx context.Context, id uuid.UUID) (*models.Question, error) {
 	var q models.Question
 	err := s.pool.QueryRow(ctx, `
-		SELECT id, code, type, prompt, points, position, explanation FROM questions WHERE id = $1`, id).
-		Scan(&q.ID, &q.Code, &q.Type, &q.Prompt, &q.Points, &q.Position, &q.Explanation)
+		SELECT id, code, type, prompt, points, level, position, explanation, sample_answer, rubric
+		FROM questions WHERE id = $1`, id).
+		Scan(&q.ID, &q.Code, &q.Type, &q.Prompt, &q.Points, &q.Level,
+			&q.Position, &q.Explanation, &q.SampleAnswer, &q.Rubric)
 	if err != nil {
 		return nil, translate(err, "đọc câu hỏi")
 	}
@@ -300,9 +311,11 @@ func (s *Store) ImportQuestions(ctx context.Context, assignmentID uuid.UUID, ite
 
 		var id uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO questions (assignment_id, code, type, prompt, points, position, explanation)
-			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-			assignmentID, code, item.Type, item.Prompt, item.Points, position+i, item.Explanation).Scan(&id)
+			INSERT INTO questions (assignment_id, code, type, prompt, points, position, explanation,
+			                       level, sample_answer, rubric)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+			assignmentID, code, item.Type, item.Prompt, item.Points, position+i, item.Explanation,
+			item.Level, item.SampleAnswer, item.Rubric).Scan(&id)
 		if err != nil {
 			if e := translate(err, "nhập câu hỏi"); errors.Is(e, ErrConflict) {
 				return 0, Invalidf("Mã câu hỏi %q bị trùng, vui lòng sửa lại trước khi nhập", code)

@@ -16,7 +16,7 @@ type AnswerInput struct {
 	EssayText         string
 }
 
-// SubmitAssignment lưu bài làm, tự động chấm phần trắc nghiệm và để phần tự luận chờ giảng viên.
+// SubmitAssignment lưu bài làm, tự động chấm phần trắc nghiệm và để phần tự luận chờ giáo viên.
 func (s *Store) SubmitAssignment(ctx context.Context, assignmentID, userID uuid.UUID, answers []AnswerInput) (*models.Submission, error) {
 	questions, err := s.ListQuestions(ctx, assignmentID)
 	if err != nil {
@@ -77,28 +77,25 @@ func (s *Store) SubmitAssignment(ctx context.Context, assignmentID, userID uuid.
 		maxScore += q.Points
 		answer := answerByQuestion[q.ID]
 
-		if q.Type == models.QuestionEssay {
+		score, isCorrect, autoGraded := scoreAnswer(q, answer)
+		if !autoGraded {
 			needsGrading = true
 			graded = append(graded, gradedAnswer{questionID: q.ID, essayText: answer.EssayText})
 			continue
 		}
+		autoScore += score
 
-		correct := isChoiceCorrect(q, answer.SelectedOptionIDs)
-		score := 0.0
-		if correct {
-			score = q.Points
-			autoScore += q.Points
-		}
-		isCorrect := correct
 		graded = append(graded, gradedAnswer{
 			questionID: q.ID,
 			selected:   answer.SelectedOptionIDs,
-			isCorrect:  &isCorrect,
-			score:      score,
+			// Câu điền khuyết lưu bài làm vào cùng cột với tự luận.
+			essayText: answer.EssayText,
+			isCorrect: isCorrect,
+			score:     score,
 		})
 	}
 
-	// Bài chỉ có trắc nghiệm được chấm xong ngay, bài có tự luận chờ giảng viên vào điểm.
+	// Bài chỉ có trắc nghiệm được chấm xong ngay, bài có tự luận chờ giáo viên vào điểm.
 	status := "graded"
 	var manualScore *float64
 	if needsGrading {
@@ -149,34 +146,6 @@ type gradedAnswer struct {
 	score      float64
 }
 
-// isChoiceCorrect chấm trắc nghiệm theo nguyên tắc đúng trọn vẹn:
-// tập đáp án chọn phải trùng khít tập đáp án đúng.
-func isChoiceCorrect(q *models.Question, selected []uuid.UUID) bool {
-	correct := map[uuid.UUID]bool{}
-	for _, o := range q.Options {
-		if o.IsCorrect {
-			correct[o.ID] = true
-		}
-	}
-	if len(correct) == 0 {
-		return false
-	}
-
-	chosen := map[uuid.UUID]bool{}
-	for _, id := range selected {
-		chosen[id] = true
-	}
-	if len(chosen) != len(correct) {
-		return false
-	}
-	for id := range correct {
-		if !chosen[id] {
-			return false
-		}
-	}
-	return true
-}
-
 const submissionColumns = `
 	s.id, s.assignment_id, s.user_id, s.attempt_no, s.status, s.auto_score, s.manual_score,
 	s.max_score, s.feedback, s.graded_by, s.graded_at, s.submitted_at`
@@ -222,7 +191,8 @@ func (s *Store) GetSubmission(ctx context.Context, id uuid.UUID) (*models.Submis
 
 func (s *Store) listAnswers(ctx context.Context, submissionID uuid.UUID) ([]*models.SubmissionAnswer, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT sa.id, sa.question_id, sa.selected_option_ids, sa.essay_text, sa.is_correct, sa.score, sa.comment
+		SELECT sa.id, sa.question_id, sa.selected_option_ids, sa.essay_text, sa.is_correct,
+		       sa.score, sa.comment, sa.ai_score, sa.ai_comment
 		FROM submission_answers sa
 		JOIN questions q ON q.id = sa.question_id
 		WHERE sa.submission_id = $1
@@ -236,7 +206,7 @@ func (s *Store) listAnswers(ctx context.Context, submissionID uuid.UUID) ([]*mod
 	for rows.Next() {
 		var a models.SubmissionAnswer
 		if err := rows.Scan(&a.ID, &a.QuestionID, &a.SelectedOptionIDs, &a.EssayText,
-			&a.IsCorrect, &a.Score, &a.Comment); err != nil {
+			&a.IsCorrect, &a.Score, &a.Comment, &a.AIScore, &a.AIComment); err != nil {
 			return nil, translate(err, "đọc câu trả lời")
 		}
 		out = append(out, &a)
@@ -281,7 +251,7 @@ func (s *Store) ListSubmissions(ctx context.Context, f ListSubmissionsFilter) ([
 	return out, rows.Err()
 }
 
-// GradeAnswerInput là điểm và nhận xét giảng viên chấm cho một câu tự luận.
+// GradeAnswerInput là điểm và nhận xét giáo viên chấm cho một câu tự luận.
 type GradeAnswerInput struct {
 	AnswerID uuid.UUID
 	Score    float64

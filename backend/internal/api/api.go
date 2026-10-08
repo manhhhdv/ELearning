@@ -19,6 +19,10 @@ import (
 	"github.com/manhnv/elearning/backend/internal/store"
 )
 
+// Server gom các phụ thuộc dùng chung cho toàn bộ handler HTTP.
+//
+// Lớp Service AI không nằm ở đây: cấu hình nhà cung cấp AI sửa được qua giao
+// diện admin nên client được dựng lại theo từng request bằng s.aiClient(ctx).
 type Server struct {
 	cfg    *config.Config
 	store  *store.Store
@@ -46,6 +50,7 @@ func (s *Server) Router() http.Handler {
 		AllowedOrigins:   s.cfg.AllowOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		ExposedHeaders:   []string{"Content-Disposition"}, // để đọc tên tệp Word khi tải về
 		AllowCredentials: false,
 		MaxAge:           300,
 	}))
@@ -57,6 +62,8 @@ func (s *Server) Router() http.Handler {
 		r.Route("/auth", func(r chi.Router) {
 			r.Get("/config", s.handleAuthConfig)
 			r.Post("/login", s.handleLogin)
+			r.Post("/register", s.handleRegister)
+			r.Post("/forgot-password", s.handleForgotPassword)
 			r.Get("/google/start", s.handleGoogleStart)
 			r.Get("/google/callback", s.handleGoogleCallback)
 
@@ -81,6 +88,9 @@ func (s *Server) Router() http.Handler {
 				r.Patch("/{userID}", s.handleUpdateUser)
 				r.Post("/{userID}/password", s.handleResetPassword)
 				r.Delete("/{userID}", s.handleDeleteUser)
+				// Yêu cầu quên mật khẩu do người dùng gửi từ trang đăng nhập.
+				r.Get("/password-resets", s.handleListPasswordResets)
+				r.Post("/password-resets/{requestID}", s.handleResolvePasswordReset)
 			})
 
 			// Chương trình đào tạo.
@@ -102,6 +112,8 @@ func (s *Server) Router() http.Handler {
 					r.Post("/enrollments", s.handleEnroll)
 					r.Delete("/enrollments/{userID}", s.handleUnenroll)
 					r.Get("/submissions", s.handleListProgramSubmissions)
+					r.Get("/gradebook", s.handleProgramGradebook)
+					r.Get("/export", s.handleExportProgram)
 					r.Post("/self-enroll", s.handleSelfEnroll)
 					r.Delete("/self-enroll", s.handleSelfUnenroll)
 				})
@@ -118,6 +130,7 @@ func (s *Server) Router() http.Handler {
 				r.Post("/questions/import", s.handleImportQuestions)
 				r.Post("/questions/import-file", s.handleImportQuestionsFile)
 				r.Get("/results", s.handleAssignmentResults)
+				r.Get("/export", s.handleExportNode)
 				r.Post("/complete", s.handleMarkComplete)
 				r.Get("/attempt", s.handleGetAttempt)
 				r.Post("/attempt/start", s.handleStartAttempt)
@@ -130,11 +143,57 @@ func (s *Server) Router() http.Handler {
 			// Bài nộp.
 			r.Get("/submissions/{submissionID}", s.handleGetSubmission)
 			r.Post("/submissions/{submissionID}/grade", s.handleGradeSubmission)
+			// AI gợi ý điểm tự luận; quyền chấm được kiểm tra trong handler.
+			r.Post("/submissions/{submissionID}/ai-grade", s.handleAIGradeSubmission)
+
+			// --- Các chức năng AI ---
+			r.Route("/ai", func(r chi.Router) {
+				r.Get("/status", s.handleAIStatus)
+
+				// Trợ lý AI và nhật ký tác vụ: mọi vai trò đều dùng được.
+				// Hướng dẫn hệ thống đổi theo vai trò (mục 3.4.4 và 3.4.5).
+				r.Post("/chat", s.handleAIChat)
+				r.Get("/conversations", s.handleListConversations)
+				r.Get("/conversations/{conversationID}", s.handleGetConversation)
+				r.Delete("/conversations/{conversationID}", s.handleDeleteConversation)
+				r.Get("/tasks", s.handleListAITasks)
+
+				// Soạn giáo án và ra đề: chỉ người dạy và quản trị viên.
+				r.Group(func(r chi.Router) {
+					r.Use(s.mw.RequireRole(models.RoleAdmin, models.RoleTrainer))
+					r.Post("/lesson", s.handleGenerateLesson)
+					r.Post("/lesson/file", s.handleGenerateLessonFromFile)
+					r.Post("/lesson-plan", s.handleGenerateLessonPlan)
+					r.Get("/lesson-plans", s.handleListLessonPlans)
+					r.Post("/lesson-plans", s.handleSaveLessonPlan)
+					r.Post("/lesson-plans/export", s.handleExportLessonPlanDraft)
+					r.Get("/lesson-plans/{planID}", s.handleGetLessonPlan)
+					r.Patch("/lesson-plans/{planID}", s.handleUpdateLessonPlan)
+					r.Delete("/lesson-plans/{planID}", s.handleDeleteLessonPlan)
+					r.Get("/lesson-plans/{planID}/export", s.handleExportLessonPlan)
+					r.Post("/questions", s.handleGenerateQuestions)
+					r.Post("/questions/file", s.handleGenerateQuestionsFromFile)
+				})
+			})
+
+			// Kho tài liệu dùng chung: ai đăng nhập cũng xem được,
+			// chỉ giáo viên và quản trị viên mới sửa.
+			r.Route("/materials", func(r chi.Router) {
+				r.Get("/", s.handleListMaterials)
+				r.Group(func(r chi.Router) {
+					r.Use(s.mw.RequireRole(models.RoleAdmin, models.RoleTrainer))
+					r.Post("/", s.handleCreateMaterial)
+					r.Patch("/{materialID}", s.handleUpdateMaterial)
+					r.Delete("/{materialID}", s.handleDeleteMaterial)
+				})
+			})
 
 			// Khu vực của học viên.
 			r.Get("/catalog", s.handleCatalog)
 			r.Get("/my/programs", s.handleMyPrograms)
 			r.Get("/my/submissions", s.handleMySubmissions)
+			// Trang tổng quan: lịch học, tiến độ, cảnh báo học tập.
+			r.Get("/my/workspace", s.handleWorkspace)
 
 			// Khu vực quản trị hệ thống.
 			r.Route("/admin", func(r chi.Router) {
@@ -142,11 +201,30 @@ func (s *Server) Router() http.Handler {
 				r.With(s.mw.RequireRole(models.RoleAdmin, models.RoleSupervisor)).
 					Get("/dashboard", s.handleDashboard)
 
+				// Phân tích học tập scoped theo lớp học giáo viên phụ trách.
+				r.With(s.mw.RequireRole(models.RoleAdmin, models.RoleTrainer)).
+					Get("/analytics", s.handleTrainerAnalytics)
+
 				// Cấu hình đăng nhập Google chứa thông tin nhạy cảm — chỉ admin.
 				r.Route("/settings/google", func(r chi.Router) {
 					r.Use(s.mw.RequireRole(models.RoleAdmin))
 					r.Get("/", s.handleGetGoogleSettings)
 					r.Put("/", s.handleSaveGoogleSettings)
+				})
+
+				// Cho phép người dùng tự đăng ký tài khoản — chỉ admin.
+				r.Route("/settings/signup", func(r chi.Router) {
+					r.Use(s.mw.RequireRole(models.RoleAdmin))
+					r.Get("/", s.handleGetSignupSettings)
+					r.Put("/", s.handleSaveSignupSettings)
+				})
+
+				// Cấu hình nhà cung cấp AI chứa khoá API — chỉ admin.
+				r.Route("/settings/ai", func(r chi.Router) {
+					r.Use(s.mw.RequireRole(models.RoleAdmin))
+					r.Get("/", s.handleGetAISettings)
+					r.Put("/", s.handleSaveAISettings)
+					r.Post("/test", s.handleTestAISettings)
 				})
 			})
 		})

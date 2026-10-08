@@ -1,11 +1,10 @@
 /* ==============================================================
-   Giao diện khu vực học viên — bố cục và nhịp thị giác kiểu Coursera.
-   Chỉ áp dụng bên trong .learner, khu quản trị giữ nguyên style cũ.
+   Nhịp thị giác kiểu Coursera — dùng chung cho toàn ứng dụng.
+   Các biến màu đặt ở :root để mọi khu vực đều dùng được; class .learner
+   chỉ còn giữ phần bố cục riêng của trình học một lớp.
    ============================================================== */
 
-.learner {
-  color-scheme: light;
-
+:root {
   --c-blue: #0056d2;
   --c-blue-hover: #00419e;
   --c-blue-soft: #e8f0fe;
@@ -23,15 +22,16 @@
   --c-red: #b3261e;
   --c-red-soft: #fceceb;
   --c-rail: 340px;
+}
 
+.learner {
+  color-scheme: light;
   color: var(--c-ink);
   background: var(--c-page);
-  font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 15px;
   line-height: 1.6;
 }
 
-/* ---------- Khung toàn màn hình của một khoá học ---------- */
+/* ---------- Khung toàn màn hình của một lớp học ---------- */
 .learner-shell { min-height: 100vh; background: var(--c-page); display: flex; flex-direction: column; }
 
 .course-topbar {
@@ -48,11 +48,11 @@
 }
 .course-topbar .back {
   display: inline-flex; align-items: center; gap: 6px;
-  color: var(--c-muted); font-weight: 600; font-size: 14px;
+  color: var(--c-muted); font-weight: 600; font-size: 16px;
   padding: 7px 11px; border-radius: 6px;
 }
 .course-topbar .back:hover { background: var(--c-panel); color: var(--c-ink); text-decoration: none; }
-.course-topbar .course-name { font-weight: 700; font-size: 16px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.course-topbar .course-name { font-weight: 700; font-size: 18px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .course-topbar .who { display: flex; align-items: center; gap: 9px; }
 .rail-toggle { display: none; }
 @media (max-width: 940px) {
@@ -65,7 +65,7 @@
 .course-body { display: grid; grid-template-columns: var(--c-rail) 1fr; flex: 1; align-items: start; min-width: 0; }
 @media (max-width: 940px) { .course-body { grid-template-columns: 1fr; } }
 
-/* ---------- Thanh nội dung khoá học bên trái ---------- */
+/* ---------- Thanh nội dung lớp học bên trái ---------- */
 .rail {
   border-right: 1px solid var(--c-line);
   background: var(--c-page);
@@ -88,11 +88,11 @@
 }
 
 .rail-head { padding: 20px 22px 16px; border-bottom: 1px solid var(--c-line-soft); }
-.rail-head h2 { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+.rail-head h2 { font-size: 17px; font-weight: 700; margin-bottom: 12px; }
 .rail-progress { display: flex; align-items: center; gap: 10px; }
 .rail-progress .bar { flex: 1; height: 8px; border-radius: 99px; background: var(--c-line); overflow: hidden; }
 .rail-progress .bar > i { display: block; height: 100%; background: var(--c-blue); border-radius: 99px; transition: width .35s ease; }
-.rail-progress .pct { font-size: 13px; font-weight: 700; color: var(--c-muted); }
+.rail-progress .pct { font-size: 14.5px; font-weight: 700; color: var(--c-muted); }
 
 .module { border-bottom: 1px solid var(--c-line-soft); }
 .module-head {
@@ -112,8 +112,8 @@
 .module-head .caret { color: var(--c-faint); transition: transform .15s; flex-shrink: 0; }
 .module-head .caret.open { transform: rotate(90deg); }
 .module-head .label { flex: 1; min-width: 0; }
-.module-head .label b { display: block; font-size: 14.5px; font-weight: 700; line-height: 1.35; }
-.module-head .label span { font-size: 12.5px; color: var(--c-muted); }
+.module-head .label b { display: block; font-size: 16.5px; font-weight: 700; line-height: 1.35; }
+.module-head .label span { font-size: 14px; color: var(--c-muted); }
 
 .module-items { padding: 2px 0 10px; }
 
@@ -142,28 +142,28 @@
 }
 .item-row .tick.done { background: var(--c-blue); border-color: var(--c-blue); color: #fff; }
 .item-row .txt { flex: 1; min-width: 0; }
-.item-row .txt b { display: block; font-weight: 500; font-size: 14.5px; line-height: 1.4; }
+.item-row .txt b { display: block; font-weight: 500; font-size: 16.5px; line-height: 1.4; }
 .item-row.active .txt b { font-weight: 700; }
 .item-row .txt span {
   display: flex; align-items: center; gap: 5px;
-  font-size: 12.5px; color: var(--c-muted); margin-top: 1px;
+  font-size: 14px; color: var(--c-muted); margin-top: 1px;
 }
 
 /* ---------- Vùng nội dung chính ---------- */
 /* min-width:0 bắt buộc: ô lưới mặc định rộng theo nội dung nên iframe và nút sẽ đẩy tràn trang. */
-.stage { padding: 34px 44px 90px; max-width: 900px; min-width: 0; width: 100%; }
+.stage { padding: 34px 44px 90px; max-width: none; min-width: 0; width: 100%; }
 @media (max-width: 720px) { .stage { padding: 24px 20px 70px; } }
 .stage h1 { overflow-wrap: break-word; }
 .stage iframe, .stage img { max-width: 100%; }
 
-.crumb { font-size: 13px; color: var(--c-muted); margin-bottom: 8px; }
-.stage h1 { font-size: 27px; font-weight: 700; line-height: 1.28; letter-spacing: -.01em; }
+.crumb { font-size: 14.5px; color: var(--c-muted); margin-bottom: 8px; }
+.stage h1 { font-size: 30.5px; font-weight: 700; line-height: 1.28; letter-spacing: -.01em; }
 .stage-meta {
   display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
-  color: var(--c-muted); font-size: 13.5px; margin-top: 7px;
+  color: var(--c-muted); font-size: 15.5px; margin-top: 7px;
 }
 .stage-meta .dot { color: var(--c-faint); }
-.prose { font-size: 15.5px; line-height: 1.72; color: var(--c-ink); white-space: pre-wrap; }
+.prose { font-size: 17.5px; line-height: 1.72; color: var(--c-ink); white-space: pre-wrap; }
 .prose-muted { color: var(--c-muted); }
 
 .player {
@@ -177,7 +177,7 @@
 }
 .player.doc { aspect-ratio: 4 / 3; background: var(--c-panel); border: 1px solid var(--c-line); }
 
-.lesson-rich { margin-top: 22px; font-size: 15.5px; }
+.lesson-rich { margin-top: 22px; font-size: 17.5px; }
 
 /* ---------- Tài liệu tải về ---------- */
 .attach-list { display: flex; flex-direction: column; gap: 9px; margin: 22px 0; }
@@ -194,7 +194,7 @@
 .attach-item:hover { border-color: var(--c-blue); box-shadow: 0 2px 8px rgba(16, 24, 40, .08); }
 .attach-item svg { flex-shrink: 0; color: var(--c-blue); }
 .attach-name { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
-.attach-action { flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--c-blue); }
+.attach-action { flex-shrink: 0; font-size: 14.5px; font-weight: 600; color: var(--c-blue); }
 
 .note-box {
   background: var(--c-panel);
@@ -203,7 +203,7 @@
   padding: 18px 20px;
   margin-top: 22px;
 }
-.note-box h3 { font-size: 14px; font-weight: 700; margin-bottom: 7px; color: var(--c-muted); text-transform: uppercase; letter-spacing: .04em; }
+.note-box h3 { font-size: 16px; font-weight: 700; margin-bottom: 7px; color: var(--c-muted); text-transform: uppercase; letter-spacing: .04em; }
 
 .callout {
   border-left: 4px solid var(--c-blue);
@@ -215,28 +215,6 @@
 }
 .callout.warn { border-left-color: var(--c-amber); background: var(--c-amber-soft); }
 .callout.ok { border-left-color: var(--c-green); background: var(--c-green-soft); }
-
-/* ---------- Nút ---------- */
-.cbtn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  padding: 10px 20px;
-  border-radius: 6px;
-  border: 1.5px solid var(--c-blue);
-  background: none;
-  color: var(--c-blue);
-  font: inherit; font-weight: 700; font-size: 14.5px;
-  cursor: pointer;
-  transition: background .12s, opacity .12s;
-  white-space: nowrap;
-}
-.cbtn:hover:not(:disabled) { background: var(--c-blue-soft); text-decoration: none; }
-.cbtn:disabled { opacity: .45; cursor: not-allowed; }
-.cbtn-fill { background: var(--c-blue); color: #fff; }
-.cbtn-fill:hover:not(:disabled) { background: var(--c-blue-hover); border-color: var(--c-blue-hover); color: #fff; }
-.cbtn-plain { border-color: var(--c-line); color: var(--c-muted); }
-.cbtn-plain:hover:not(:disabled) { background: var(--c-panel); color: var(--c-ink); }
-.cbtn-sm { padding: 6px 13px; font-size: 13.5px; }
-.cbtn-done { border-color: var(--c-green); color: var(--c-green); background: var(--c-green-soft); }
 
 /* Thanh điều hướng bài trước / bài sau, ghim đáy màn hình */
 .stage-nav {
@@ -266,7 +244,7 @@
 .pill {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 3px 10px; border-radius: 99px;
-  font-size: 12px; font-weight: 700;
+  font-size: 13.5px; font-weight: 700;
   background: var(--c-panel); color: var(--c-muted);
 }
 .pill-blue { background: var(--c-blue-soft); color: var(--c-blue); }
@@ -283,8 +261,8 @@
   background: var(--c-panel);
 }
 .quiz-stats { display: flex; flex-wrap: wrap; gap: 26px; margin-top: 14px; }
-.quiz-stats > div > span { display: block; font-size: 12.5px; color: var(--c-muted); }
-.quiz-stats > div > b { font-size: 16px; }
+.quiz-stats > div > span { display: block; font-size: 14px; color: var(--c-muted); }
+.quiz-stats > div > b { font-size: 18px; }
 
 .qcard {
   border: 1px solid var(--c-line);
@@ -297,9 +275,9 @@
   display: flex; align-items: center; gap: 10px;
   margin-bottom: 12px; flex-wrap: wrap;
 }
-.qcard-top .no { font-weight: 700; font-size: 14px; }
+.qcard-top .no { font-weight: 700; font-size: 16px; }
 .qcard-top .grow { flex: 1; }
-.qcard .stem { font-size: 16px; line-height: 1.6; white-space: pre-wrap; margin-bottom: 16px; }
+.qcard .stem { font-size: 18px; line-height: 1.6; white-space: pre-wrap; margin-bottom: 16px; }
 
 .choice {
   display: flex; align-items: flex-start; gap: 12px;
@@ -358,8 +336,8 @@
   text-align: center;
   line-height: 1.15;
 }
-.score-ring b { font-size: 21px; }
-.score-ring span { font-size: 11.5px; color: var(--c-muted); }
+.score-ring b { font-size: 23.5px; }
+.score-ring span { font-size: 13px; color: var(--c-muted); }
 
 .result-head {
   display: flex; align-items: center; gap: 26px;
@@ -370,7 +348,7 @@
   flex-wrap: wrap;
 }
 
-/* ---------- Danh sách khoá học ---------- */
+/* ---------- Danh sách lớp học ---------- */
 .course-grid {
   display: grid;
   gap: 20px;
@@ -396,22 +374,22 @@
   display: flex; align-items: flex-end;
   padding: 12px 16px;
   color: #fff;
-  font-size: 12.5px; font-weight: 700; letter-spacing: .06em;
+  font-size: 14px; font-weight: 700; letter-spacing: .06em;
 }
 .course-card-body { padding: 16px 18px 18px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
-.course-card-body h3 { font-size: 17px; font-weight: 700; line-height: 1.35; }
+.course-card-body h3 { font-size: 19px; font-weight: 700; line-height: 1.35; }
 .course-card-body .desc {
-  font-size: 14px; color: var(--c-muted);
+  font-size: 16px; color: var(--c-muted);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .course-card-foot { margin-top: auto; padding-top: 6px; }
 .course-card-foot .bar { height: 6px; border-radius: 99px; background: var(--c-line); overflow: hidden; margin-bottom: 6px; }
 .course-card-foot .bar > i { display: block; height: 100%; background: var(--c-blue); border-radius: 99px; }
 
-/* ---------- Bảng gọn cho khu học viên ---------- */
+/* ---------- Bảng gọn cho khu học sinh ---------- */
 .ltable { width: 100%; border-collapse: collapse; }
 .ltable th {
-  font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
+  font-size: 13.5px; text-transform: uppercase; letter-spacing: .05em;
   color: var(--c-muted); font-weight: 700; text-align: left;
   padding: 11px 16px; border-bottom: 1px solid var(--c-line);
 }
@@ -422,15 +400,33 @@
 .panel {
   border: 1px solid var(--c-line);
   border-radius: 12px;
-  overflow: hidden;
   background: var(--c-page);
+  padding: 22px 24px;
+  margin-bottom: 18px;
 }
+.panel > h3 { font-size: 19px; margin-bottom: 12px; }
+
 /* Bảng nhiều cột tự cuộn ngang thay vì bóp chữ xuống thành từng ký tự. */
 .panel:has(> .ltable) { overflow-x: auto; }
-.panel > .ltable { min-width: 620px; }
+.panel > .ltable { min-width: 560px; }
+
+/* Thẻ chỉ chứa mỗi một bảng thì cho bảng chạm mép thẻ, trông gọn hơn là để
+   một khung đệm rỗng bao quanh. Thẻ có thêm tiêu đề vẫn giữ đệm bình thường,
+   nếu không tiêu đề sẽ tràn ra sát mép. */
+.panel > .ltable:only-child {
+  margin: -22px -24px;
+  width: calc(100% + 48px);
+}
+@media (max-width: 640px) {
+  .panel > .ltable:only-child { margin: -16px; width: calc(100% + 32px); }
+}
+
+@media (max-width: 640px) {
+  .panel { padding: 16px; }
+}
 
 .blank { text-align: center; padding: 56px 24px; color: var(--c-muted); }
-.blank h3 { font-size: 17px; color: var(--c-ink); margin-bottom: 6px; }
+.blank h3 { font-size: 19px; color: var(--c-ink); margin-bottom: 6px; }
 
 /* Đồng hồ đếm ngược: chữ số cố định bề rộng để không giật khi đổi giây. */
 .timer { font-variant-numeric: tabular-nums; }
@@ -488,3 +484,205 @@
   overflow-y: auto;
 }
 .learner-shell.immersive .rail { height: calc(100vh - 60px); }
+
+/* ===========================================================
+   Hai dạng câu hỏi bổ sung: đúng/sai và điền khuyết
+   =========================================================== */
+
+/* Ô nhập của câu điền khuyết: ngắn hơn ô tự luận vì chỉ điền một cụm từ. */
+.blank-box {
+  width: 100%;
+  max-width: 420px;
+  padding: 11px 13px;
+  border: 1px solid var(--c-border, #d7dee8);
+  border-radius: 9px;
+  font: inherit;
+  font-size: 17px;
+}
+.blank-box:focus {
+  outline: none;
+  border-color: var(--c-blue);
+  box-shadow: 0 0 0 3px rgba(22, 87, 208, .14);
+}
+
+.tf-list { display: flex; flex-direction: column; gap: 9px; }
+.tf-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 11px 13px;
+  border: 1px solid var(--c-border, #d7dee8);
+  border-radius: 9px;
+}
+.tf-text { flex: 1; min-width: 180px; font-size: 17px; line-height: 1.5; }
+.tf-pick { display: flex; gap: 7px; }
+.tf-opt {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 13px;
+  border: 1px solid var(--c-border, #d7dee8);
+  border-radius: 999px;
+  font-size: 15.5px;
+  cursor: pointer;
+  user-select: none;
+}
+.tf-opt input { accent-color: var(--c-blue); }
+.tf-opt.on {
+  border-color: var(--c-blue);
+  background: rgba(22, 87, 208, .08);
+  font-weight: 600;
+}
+
+/* ==============================================================
+   Màn hình chấm bài — nhận xét và cho điểm câu tự luận
+   ============================================================== */
+
+/* Bài làm của học sinh cần có nhãn: trước đây nó là một khối xám trơn,
+   nhìn thoáng qua dễ lẫn với khối Giải thích ngay bên dưới. */
+.answer-block { margin-top: 12px; }
+.answer-label {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--c-muted);
+  margin-bottom: 6px;
+}
+
+/* Hướng dẫn chấm: đáp án gợi ý và tiêu chí chấm, chỉ người chấm thấy. */
+.grading-guide {
+  margin-top: 14px;
+  border: 1px solid var(--c-line);
+  border-left: 3px solid var(--c-blue);
+  border-radius: 10px;
+  background: var(--c-panel);
+  padding: 14px 16px;
+}
+.grading-guide-head {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--c-blue);
+  margin-bottom: 10px;
+}
+.grading-guide-row + .grading-guide-row { margin-top: 10px; }
+.grading-guide-row > span {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-muted);
+  margin-bottom: 2px;
+}
+.grading-guide-row > p { margin: 0; font-size: 16.5px; line-height: 1.55; }
+
+/* Khu cho điểm: ô số + nút chấm nhanh bên trái, ô nhận xét bên phải. */
+.grade-form {
+  display: flex;
+  gap: 18px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--c-line);
+  flex-wrap: wrap;
+}
+.grade-score { flex: 0 0 auto; }
+.grade-score > label,
+.grade-comment > span {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.grade-score-input { display: flex; align-items: center; gap: 8px; }
+.grade-score-input input {
+  width: 84px;
+  font-size: 19px;
+  font-weight: 700;
+  text-align: center;
+}
+.grade-score-input > span { color: var(--c-muted); font-size: 17px; }
+.grade-quick { display: flex; gap: 6px; margin-top: 8px; }
+
+.grade-comment { flex: 1; min-width: 240px; }
+.grade-comment textarea { width: 100%; resize: vertical; }
+
+/* Thanh chấm bài dính đáy màn hình. */
+.grade-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 15;
+  background: var(--c-page);
+  border-top: 1px solid var(--c-line);
+  box-shadow: 0 -4px 14px rgba(16, 24, 40, .06);
+}
+.grade-bar-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 12px 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.grade-bar-info { display: flex; flex-direction: column; gap: 1px; }
+.grade-bar-info b { font-size: 18px; }
+@media (max-width: 860px) {
+  .grade-bar-inner { padding: 10px 16px; }
+}
+
+/* Nhận xét của giáo viên là thứ học sinh tìm đọc đầu tiên khi mở bài đã chấm,
+   nên tách khỏi các khối thông tin khác bằng viền trái màu xanh lá. */
+.callout.teacher-note {
+  margin: 14px 0 0;
+  border-left: 3px solid var(--c-green);
+  background: var(--c-green-soft);
+}
+.callout.teacher-note b { color: var(--c-green); }
+
+/* ---------- Kho tài liệu dùng chung ---------- */
+.material-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.material-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-page);
+  transition: border-color .15s, box-shadow .15s;
+}
+.material-card:hover { border-color: var(--c-blue); box-shadow: 0 4px 14px rgba(16, 24, 40, .07); }
+/* Bản nháp chỉ người quản lý thấy nên làm mờ để khỏi nhầm với tài liệu đã đăng. */
+.material-card.draft { background: var(--c-panel); border-style: dashed; }
+.material-kind {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 14px; font-weight: 700;
+  color: var(--c-muted);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.material-card h3 { font-size: 18px; line-height: 1.35; margin: 0; }
+.material-desc {
+  margin: 0;
+  font-size: 15.5px;
+  line-height: 1.5;
+  color: var(--c-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.material-foot {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+/* Ghi chú nhỏ dưới một con số thống kê, VD "điểm tạm tính" khi bài chưa chấm xong. */
+.stat-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 13.5px;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--c-amber);
+}

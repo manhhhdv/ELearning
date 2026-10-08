@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -17,12 +18,16 @@ type questionOptionInput struct {
 
 type saveQuestionRequest struct {
 	// Để trống khi tạo mới thì hệ thống tự sinh; khi sửa thì giữ nguyên mã cũ.
-	Code        string                `json:"code"`
-	Type        string                `json:"type"`
-	Prompt      string                `json:"prompt"`
-	Points      float64               `json:"points"`
-	Explanation string                `json:"explanation"`
-	Options     []questionOptionInput `json:"options"`
+	Code        string  `json:"code"`
+	Type        string  `json:"type"`
+	Prompt      string  `json:"prompt"`
+	Points      float64 `json:"points"`
+	Level       string  `json:"level"`
+	Explanation string  `json:"explanation"`
+	// Chỉ dùng cho câu tự luận.
+	SampleAnswer string                `json:"sampleAnswer"`
+	Rubric       string                `json:"rubric"`
+	Options      []questionOptionInput `json:"options"`
 }
 
 // toParams kiểm tra tính hợp lệ rồi chuyển sang tham số của tầng store.
@@ -49,10 +54,19 @@ func (req *saveQuestionRequest) toParams(assignmentID uuid.UUID) (store.SaveQues
 		Type:         req.Type,
 		Prompt:       prompt,
 		Points:       points,
+		Level:        normalizeLevel(req.Level),
 		Explanation:  explanation,
 	}
 
 	if req.Type == models.QuestionEssay {
+		params.SampleAnswer = trimmed(req.SampleAnswer)
+		params.Rubric = trimmed(req.Rubric)
+		if params.SampleAnswer == "" {
+			return store.SaveQuestionParams{}, errValidation("Câu tự luận cần có đáp án gợi ý")
+		}
+		if params.Rubric == "" {
+			return store.SaveQuestionParams{}, errValidation("Câu tự luận cần có tiêu chí chấm")
+		}
 		return params, nil
 	}
 
@@ -62,22 +76,56 @@ func (req *saveQuestionRequest) toParams(assignmentID uuid.UUID) (store.SaveQues
 		if content == "" {
 			continue
 		}
-		if o.IsCorrect {
+		// Với câu điền khuyết, mọi dòng đều là một đáp án được chấp nhận.
+		isCorrect := o.IsCorrect || req.Type == models.QuestionFillBlank
+		if isCorrect {
 			correct++
 		}
-		params.Options = append(params.Options, store.QuestionOptionInput{Content: content, IsCorrect: o.IsCorrect})
+		params.Options = append(params.Options, store.QuestionOptionInput{Content: content, IsCorrect: isCorrect})
 	}
 
-	if len(params.Options) < 2 {
-		return store.SaveQuestionParams{}, errValidation("Câu trắc nghiệm cần ít nhất 2 phương án")
-	}
-	if correct == 0 {
-		return store.SaveQuestionParams{}, errValidation("Vui lòng đánh dấu ít nhất một phương án đúng")
-	}
-	if req.Type == models.QuestionSingleChoice && correct > 1 {
-		return store.SaveQuestionParams{}, errValidation("Câu một đáp án chỉ được đánh dấu đúng một phương án")
+	switch req.Type {
+	case models.QuestionFillBlank:
+		if len(params.Options) == 0 {
+			return store.SaveQuestionParams{}, errValidation("Câu điền khuyết cần ít nhất một đáp án được chấp nhận")
+		}
+		if !strings.Contains(prompt, "___") {
+			return store.SaveQuestionParams{}, errValidation("Câu điền khuyết cần có chỗ trống đánh dấu bằng ___")
+		}
+
+	case models.QuestionTrueFalse:
+		// Mỗi phương án là một phát biểu; IsCorrect là giá trị Đúng/Sai của
+		// phát biểu đó, nên phát biểu sai hết vẫn là câu hỏi hợp lệ.
+		if len(params.Options) < 2 {
+			return store.SaveQuestionParams{}, errValidation("Câu đúng/sai cần ít nhất 2 phát biểu")
+		}
+
+	default:
+		if len(params.Options) < 2 {
+			return store.SaveQuestionParams{}, errValidation("Câu trắc nghiệm cần ít nhất 2 phương án")
+		}
+		if correct == 0 {
+			return store.SaveQuestionParams{}, errValidation("Vui lòng đánh dấu ít nhất một phương án đúng")
+		}
+		if req.Type == models.QuestionSingleChoice && correct > 1 {
+			return store.SaveQuestionParams{}, errValidation("Câu một đáp án chỉ được đánh dấu đúng một phương án")
+		}
 	}
 	return params, nil
+}
+
+// normalizeLevel chỉ chấp nhận ba mức độ chuẩn; giá trị lạ bị bỏ qua thay vì
+// làm hỏng cả câu hỏi, vì mức độ chỉ dùng để phân loại.
+func normalizeLevel(level string) string {
+	switch trimmed(level) {
+	case models.LevelRemember:
+		return models.LevelRemember
+	case models.LevelUnderstand:
+		return models.LevelUnderstand
+	case models.LevelApply:
+		return models.LevelApply
+	}
+	return ""
 }
 
 func (s *Server) handleCreateQuestion(w http.ResponseWriter, r *http.Request) {
@@ -298,7 +346,8 @@ func (s *Server) handleAssignmentResults(w http.ResponseWriter, r *http.Request)
 
 func validQuestionType(t string) bool {
 	switch t {
-	case models.QuestionSingleChoice, models.QuestionMultiChoice, models.QuestionEssay:
+	case models.QuestionSingleChoice, models.QuestionMultiChoice,
+		models.QuestionTrueFalse, models.QuestionFillBlank, models.QuestionEssay:
 		return true
 	}
 	return false

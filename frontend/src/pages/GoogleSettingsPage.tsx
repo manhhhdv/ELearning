@@ -67,7 +67,7 @@ export function GoogleSettingsPage() {
 
   return (
     <>
-      <PageHeader title="Đăng nhập Google" subtitle="Cho phép học viên và giảng viên đăng nhập bằng tài khoản Google" />
+      <PageHeader title="Đăng nhập Google" subtitle="Cho phép học sinh và giáo viên đăng nhập bằng tài khoản Google" />
 
       <div className="page-body">
         {loading ? <Loading /> : !settings ? <ErrorAlert message={error} /> : (
@@ -137,8 +137,8 @@ export function GoogleSettingsPage() {
                   <label htmlFor="g-auto">Tự tạo tài khoản cho email lạ</label>
                   <select id="g-auto" value={autoProvisionRole} onChange={(e) => setAutoProvisionRole(e.target.value)}>
                     <option value="">Không — chỉ tài khoản admin đã cấp sẵn mới đăng nhập được</option>
-                    <option value="student">Có — tạo với vai trò Học viên</option>
-                    <option value="trainer">Có — tạo với vai trò Giảng viên</option>
+                    <option value="student">Có — tạo với vai trò Học sinh</option>
+                    <option value="trainer">Có — tạo với vai trò Giáo viên</option>
                   </select>
                   <div className="hint">
                     Áp dụng khi một email đăng nhập Google lần đầu mà chưa có trong hệ thống.

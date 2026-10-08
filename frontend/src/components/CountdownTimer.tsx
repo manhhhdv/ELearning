@@ -33,7 +33,7 @@ export function CountdownTimer({ expiresAt, onExpire }: Props) {
     return () => clearInterval(timer)
   }, [expiresAt, onExpire])
 
-  // Dưới 1 phút chuyển đỏ, dưới 5 phút chuyển hổ phách để học viên chú ý.
+  // Dưới 1 phút chuyển đỏ, dưới 5 phút chuyển hổ phách để học sinh chú ý.
   const tone = left <= 60 ? 'pill-red' : left <= 300 ? 'pill-amber' : 'pill-blue'
 
   return (

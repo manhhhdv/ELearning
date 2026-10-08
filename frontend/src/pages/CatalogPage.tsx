@@ -23,7 +23,7 @@ export function CatalogPage() {
       setPrograms(await api.catalog(query))
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được danh mục khoá học')
+      setError(err instanceof Error ? err.message : 'Không tải được danh mục lớp học')
     } finally {
       setLoading(false)
     }
@@ -46,8 +46,8 @@ export function CatalogPage() {
   return (
     <>
       <PageHeader
-        title="Khám phá khoá học"
-        subtitle="Các khoá học mở, bạn có thể tự đăng ký mà không cần chờ quản trị viên"
+        title="Khám phá lớp học"
+        subtitle="Các lớp học mở, bạn có thể tự đăng ký mà không cần chờ quản trị viên"
       />
 
       <div className="page-body">
@@ -56,8 +56,8 @@ export function CatalogPage() {
         {loading ? <Loading /> : programs.length === 0 ? (
           <div className="card">
             <div className="empty">
-              <h3>Hiện chưa có khoá học nào mở đăng ký</h3>
-              <p>Khi có khoá mới mở, khoá đó sẽ xuất hiện tại đây.</p>
+              <h3>Hiện chưa có lớp học nào mở đăng ký</h3>
+              <p>Khi có lớp mới mở, lớp đó sẽ xuất hiện tại đây.</p>
             </div>
           </div>
         ) : (
@@ -65,7 +65,7 @@ export function CatalogPage() {
             {programs.map((p) => (
               <div className="tile" key={p.id} style={{ cursor: 'default' }}>
                 <div className="tile-cover" style={courseCover(p)}>
-                  {!p.coverUrl && p.code}
+                  <span className="tile-course-code">{p.code}</span>
                 </div>
                 <div className="tile-body">
                   <h3>{p.title}</h3>

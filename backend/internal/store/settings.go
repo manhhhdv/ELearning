@@ -14,6 +14,21 @@ const (
 	SettingGoogleClientSecret      = "google_client_secret"
 	SettingGoogleAllowedDomains    = "google_allowed_domains"
 	SettingGoogleAutoProvisionRole = "google_auto_provision_role"
+
+	// Cấu hình nhà cung cấp AI. Khoá API được lưu trong DB nên admin đổi được
+	// qua giao diện, không cần sửa .env và khởi động lại máy chủ.
+	SettingAIProvider = "ai_provider"
+	SettingAIAPIKey   = "ai_api_key"
+	SettingAIModel    = "ai_model"
+	// Danh sách kênh AI (nhà cung cấp + khoá + model) dạng JSON, dùng để xoay
+	// vòng khi một kênh bị rate limit. Có khoá này thì ba khoá đơn lẻ ở trên
+	// chỉ còn là cấu hình cũ để tương thích ngược.
+	SettingAIChannels = "ai_channels"
+
+	// Cho phép người dùng tự đăng ký tài khoản ở trang đăng nhập.
+	SettingSignupEnabled = "signup_enabled"
+	// Giới hạn domain email được phép tự đăng ký (rỗng = không giới hạn).
+	SettingSignupAllowedDomains = "signup_allowed_domains"
 )
 
 // GetSetting đọc một giá trị cấu hình; ok=false nếu chưa được đặt trong DB

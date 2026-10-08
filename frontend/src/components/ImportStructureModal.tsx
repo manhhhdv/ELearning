@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 
 import { api } from '../api/client'
 import { SAMPLE_STRUCTURE, STRUCTURE_KIND_LABEL, parseStructure } from './structureImport'
+import { FilePicker } from './FilePicker'
 import { Modal } from './ui'
 
 interface Props {
@@ -55,7 +56,7 @@ export function ImportStructureModal({ programId, folders, defaultParentId, onCl
 
   return (
     <Modal
-      title="Nhập cấu trúc chương trình"
+      title="Nhập cấu trúc lớp học"
       onClose={onClose}
       wide
       footer={
@@ -80,7 +81,7 @@ export function ImportStructureModal({ programId, folders, defaultParentId, onCl
           value={parentId ?? ''}
           onChange={(e) => setParentId(e.target.value || null)}
         >
-          <option value="">Gốc chương trình</option>
+          <option value="">Gốc lớp học</option>
           {folders.map((f) => (
             <option key={f.id} value={f.id}>{f.label}</option>
           ))}
@@ -108,19 +109,13 @@ export function ImportStructureModal({ programId, folders, defaultParentId, onCl
       </details>
 
       <div className="field">
-        <label htmlFor="import-structure-file">Tải file lên (.xlsx, .csv)</label>
-        <input
-          id="import-structure-file"
-          type="file"
+        <label>Tải file lên (.xlsx, .csv)</label>
+        <FilePicker
           accept=".xlsx,.csv"
           disabled={uploading}
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            e.target.value = ''
-            if (file) void handleFile(file)
-          }}
+          label={uploading ? 'Đang đọc file…' : 'Chọn file'}
+          onPick={(file) => void handleFile(file)}
         />
-        {uploading && <span className="tiny muted" style={{ marginLeft: 8 }}>Đang đọc file…</span>}
       </div>
 
       <div className="field">

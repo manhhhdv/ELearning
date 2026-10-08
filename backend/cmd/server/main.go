@@ -50,6 +50,11 @@ func run() error {
 	if err := seedAdmin(ctx, st, cfg); err != nil {
 		return err
 	}
+	if cfg.SeedSampleSubjects {
+		if err := seedSampleSubjects(ctx, st, cfg); err != nil {
+			return err
+		}
+	}
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
@@ -94,4 +99,20 @@ func seedAdmin(ctx context.Context, st *store.Store, cfg *config.Config) error {
 			"email", cfg.SeedAdminEmail)
 	}
 	return nil
+}
+
+// seedSampleSubjects tạo sẵn vài lớp học mẫu (Toán, Ngữ văn, Vật lý, Hóa học)
+// khi cfg.SeedSampleSubjects bật, để có ngay dữ liệu thử nghiệm cho các chức
+// năng tạo bài giảng / ra đề / ghi danh thay vì phải tạo tay từng lớp. Bật
+// mặc định ở mọi môi trường trừ production; đặt SEED_SAMPLE_SUBJECTS=true để
+// chủ động bật ở production khi cần seed dữ liệu demo lên đó.
+func seedSampleSubjects(ctx context.Context, st *store.Store, cfg *config.Config) error {
+	admin, err := st.GetUserByEmail(ctx, cfg.SeedAdminEmail)
+	if err != nil {
+		// Không có tài khoản quản trị nào để gán làm người tạo thì bỏ qua,
+		// không chặn khởi động máy chủ vì việc này.
+		slog.Warn("không tìm được tài khoản quản trị để gán lớp học mẫu, bỏ qua", "lỗi", err)
+		return nil
+	}
+	return st.EnsureSampleSubjects(ctx, admin.ID)
 }

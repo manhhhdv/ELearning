@@ -3,27 +3,28 @@ import { Link } from 'react-router-dom'
 import type { Program } from '../api/types'
 import { IconDoc, IconPin } from './icons'
 
-/** Dải màu dự phòng khi khoá học chưa có ảnh bìa, suy từ mã khoá nên luôn ổn định. */
-const GRADIENTS = [
-  'linear-gradient(135deg, #0b5cd5 0%, #4a9df5 100%)',
-  'linear-gradient(135deg, #0b7a44 0%, #37b978 100%)',
-  'linear-gradient(135deg, #6d28d9 0%, #a855f7 100%)',
-  'linear-gradient(135deg, #b45309 0%, #f5a524 100%)',
-  'linear-gradient(135deg, #0f766e 0%, #2dd4bf 100%)',
-  'linear-gradient(135deg, #9f1239 0%, #f43f5e 100%)',
-]
+export const COURSE_COVERS = [
+  { id: 'math', label: 'Toán học' },
+  { id: 'science', label: 'Khoa học' },
+  { id: 'code', label: 'Công nghệ' },
+  { id: 'literature', label: 'Văn học' },
+  { id: 'language', label: 'Ngôn ngữ' },
+  { id: 'nature', label: 'Thiên nhiên' },
+  { id: 'geography', label: 'Địa lý' },
+  { id: 'history', label: 'Lịch sử' },
+].map((cover) => ({ ...cover, url: `/covers/${cover.id}.svg` }))
 
-function fallbackCover(code: string) {
+/** Stable local illustrations, including a fallback when a custom image fails. */
+export function defaultCourseCover(code: string) {
   let hash = 0
   for (const ch of code) hash = (hash * 31 + ch.charCodeAt(0)) % 997
-  return GRADIENTS[hash % GRADIENTS.length]
+  return COURSE_COVERS[hash % COURSE_COVERS.length].url
 }
 
-/** Kiểu nền cho ảnh bìa: dùng ảnh nếu có, không thì lấy dải màu theo mã khoá. */
-export function courseCover(program: Program): React.CSSProperties {
-  return program.coverUrl
-    ? { backgroundImage: `url(${program.coverUrl})` }
-    : { background: fallbackCover(program.code) }
+export function courseCover(program: Pick<Program, 'coverUrl' | 'code'>): React.CSSProperties {
+  const fallback = `url(${JSON.stringify(defaultCourseCover(program.code))})`
+  return { backgroundImage: program.coverUrl.trim()
+    ? `url(${JSON.stringify(program.coverUrl.trim())}), ${fallback}` : fallback }
 }
 
 export function CourseTile({ program }: { program: Program }) {
@@ -34,21 +35,22 @@ export function CourseTile({ program }: { program: Program }) {
   return (
     <Link to={`/hoc/${program.slug}`} className="tile">
       {program.isDefaultCourse && (
-        <span className="tile-default-badge" title="Khoá học mặc định — tự động hiện với mọi người">
+        <span className="tile-default-badge" title="Lớp học mặc định — tự động hiện với mọi người">
           <IconPin size={11} /> Bắt buộc
         </span>
       )}
       <div className="tile-cover" style={courseCover(program)}>
-        {!program.coverUrl && program.code}
+        <span className="tile-course-code">{program.code}</span>
       </div>
 
       <div className="tile-body">
         <h3>{program.title}</h3>
+        {program.description && <p className="tile-desc">{program.description}</p>}
       </div>
 
       {done > 0 && (
         <div className="tile-progress">
-          <div className="bar"><i style={{ width: `${percent}%` }} /></div>
+          <div className="bar" role="progressbar" aria-label="Tiến độ lớp học" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${percent}%` }} /></div>
           <span>{percent === 100 ? 'Đã hoàn thành' : `Đã học ${done}/${total} bài · ${percent}%`}</span>
         </div>
       )}

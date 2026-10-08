@@ -36,10 +36,10 @@ export function AdminDashboardPage() {
         {loading ? <Loading /> : !stats ? null : (
           <>
             <div className="stat-row" style={{ marginBottom: 26 }}>
-              <StatCard label="Chương trình" value={stats.programsTotal}
+              <StatCard label="Lớp học" value={stats.programsTotal}
                 detail={`${stats.programsPublished} xuất bản · ${stats.programsDraft} nháp · ${stats.programsArchived} lưu trữ`} />
               <StatCard label="Người dùng" value={stats.usersTotal}
-                detail={`${stats.studentCount} học viên · ${stats.trainerCount} giảng viên`} />
+                detail={`${stats.studentCount} học sinh · ${stats.trainerCount} giáo viên`} />
               <StatCard label="Lượt ghi danh" value={stats.enrollmentsTotal} />
               <StatCard label="Bài nộp" value={stats.submissionsTotal}
                 detail={`${stats.submissionsPending} đang chờ chấm`}
@@ -79,13 +79,13 @@ export function AdminDashboardPage() {
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ marginBottom: 10 }}>Chương trình nhiều học viên nhất</h3>
+                <h3 style={{ marginBottom: 10 }}>Lớp học nhiều học sinh nhất</h3>
                 <div className="card">
                   {stats.topPrograms.length === 0 ? (
-                    <EmptyState title="Chưa có chương trình nào" />
+                    <EmptyState title="Chưa có lớp học nào" />
                   ) : (
                     <table>
-                      <thead><tr><th>Chương trình</th><th>Trạng thái</th><th>Học viên</th></tr></thead>
+                      <thead><tr><th>Lớp học</th><th>Trạng thái</th><th>Học sinh</th></tr></thead>
                       <tbody>
                         {stats.topPrograms.map((p) => (
                           <tr key={p.id}>

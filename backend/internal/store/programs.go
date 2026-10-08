@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -19,7 +20,7 @@ const programColumns = `
 
 // programStats đếm số nút, bài học, bài tập và lượt ghi danh của từng chương trình.
 // Tham số cuối là ID người dùng đang xem, dùng để đếm số bài họ đã hoàn thành (NULL = bỏ qua).
-// Khoá học mặc định coi như "đã ghi danh" với mọi người xem, dù không có dòng enrollments nào.
+// Lớp học mặc định coi như "đã ghi danh" với mọi người xem, dù không có dòng enrollments nào.
 const programStats = `
 	COALESCE((SELECT count(*) FROM nodes n WHERE n.program_id = p.id), 0),
 	COALESCE((SELECT count(*) FROM nodes n WHERE n.program_id = p.id AND n.kind = 'lesson'), 0),
@@ -120,6 +121,19 @@ func (s *Store) GetProgramBySlug(ctx context.Context, slug string, viewerID uuid
 	return p, nil
 }
 
+// GetProgramByCode đọc chương trình theo mã (không phân biệt hoa thường),
+// dùng khi chỉ biết mã ổn định (VD: dữ liệu mẫu seed sẵn) chứ chưa có ID.
+func (s *Store) GetProgramByCode(ctx context.Context, code string) (*models.Program, error) {
+	row := s.pool.QueryRow(ctx,
+		`SELECT `+programColumns+`, `+fmt.Sprintf(programStats, 2, 2)+` FROM programs p WHERE lower(p.code) = lower($1)`,
+		strings.TrimSpace(code), nullableUUID(uuid.Nil))
+	p, err := scanProgram(row)
+	if err != nil {
+		return nil, translate(err, "đọc chương trình")
+	}
+	return p, nil
+}
+
 // GetProgram đọc một chương trình. viewerID khác uuid.Nil thì kèm theo tiến độ học của người đó.
 func (s *Store) GetProgram(ctx context.Context, id uuid.UUID, viewerID uuid.UUID) (*models.Program, error) {
 	row := s.pool.QueryRow(ctx,
@@ -138,7 +152,7 @@ type ListProgramsFilter struct {
 	// Khi khác uuid.Nil, chỉ trả về chương trình mà người dùng này được ghi danh.
 	EnrolledUserID uuid.UUID
 	// Khi khác uuid.Nil, chỉ trả về chương trình do người dùng này tạo hoặc được ghi danh.
-	// Dùng cho giảng viên: không cho thấy chương trình của người khác.
+	// Dùng cho giáo viên: không cho thấy chương trình của người khác.
 	VisibleToUserID uuid.UUID
 	// Người đang xem, dùng để tính số bài đã hoàn thành trả kèm mỗi chương trình.
 	ViewerID uuid.UUID
@@ -257,4 +271,64 @@ func nullableUUID(id uuid.UUID) *uuid.UUID {
 		return nil
 	}
 	return &id
+}
+
+// SampleSubject mô tả một lớp học mẫu tạo sẵn cho môi trường phát triển /
+// thử nghiệm, để có ngay dữ liệu demo thay vì phải tạo tay từng lớp.
+type SampleSubject struct {
+	Code        string
+	Title       string
+	Description string
+}
+
+// SampleSubjects là bốn môn học lớp 10 quen thuộc, nội dung bám theo Chương
+// trình giáo dục phổ thông 2018 — đủ để thử các chức năng tạo bài giảng, ra
+// đề và ghi danh mà không cần dữ liệu thật. Chọn lớp 10 vì đây là năm đầu
+// tiên cả bốn môn này tách riêng (THCS gộp Vật lý, Hóa học vào môn Khoa học
+// tự nhiên) nên tên lớp học có thể ghi thống nhất "lớp 10".
+var SampleSubjects = []SampleSubject{
+	{Code: "TOAN", Title: "Toán lớp 10", Description: "Lớp học mẫu môn Toán lớp 10 theo Chương trình GDPT 2018, dùng để thử nghiệm các chức năng của hệ thống."},
+	{Code: "NGUVAN", Title: "Ngữ văn lớp 10", Description: "Lớp học mẫu môn Ngữ văn lớp 10 theo Chương trình GDPT 2018, dùng để thử nghiệm các chức năng của hệ thống."},
+	{Code: "VATLY", Title: "Vật lý lớp 10", Description: "Lớp học mẫu môn Vật lý lớp 10 theo Chương trình GDPT 2018, dùng để thử nghiệm các chức năng của hệ thống."},
+	{Code: "HOAHOC", Title: "Hóa học lớp 10", Description: "Lớp học mẫu môn Hóa học lớp 10 theo Chương trình GDPT 2018, dùng để thử nghiệm các chức năng của hệ thống."},
+}
+
+// EnsureSampleSubjects tạo các lớp học mẫu trong SampleSubjects nếu chưa có
+// (so theo mã, không phân biệt hoa thường); lớp đã tồn tại thì đồng bộ lại
+// tên/mô tả theo đúng SampleSubjects hiện tại (lớp này do chính cơ chế seed
+// quản lý, nên cập nhật theo mỗi lần đổi nội dung mẫu là hợp lý). Sau đó thêm
+// bài giảng/bài tập mẫu (xem sample_content.go) cho lớp nào vẫn còn trống —
+// lớp đã có nội dung (do seed lần trước hoặc do người dùng tự soạn) thì bỏ
+// qua êm, không đụng vào. An toàn khi gọi lại nhiều lần lúc khởi động server.
+func (s *Store) EnsureSampleSubjects(ctx context.Context, createdBy uuid.UUID) error {
+	for _, subj := range SampleSubjects {
+		p, err := s.CreateProgram(ctx, CreateProgramParams{
+			Code:            subj.Code,
+			Title:           subj.Title,
+			Description:     subj.Description,
+			Status:          "published",
+			AllowSelfEnroll: true,
+			CreatedBy:       createdBy,
+		})
+		if err != nil {
+			if !errors.Is(err, ErrConflict) {
+				return fmt.Errorf("tạo lớp học mẫu %s: %w", subj.Code, err)
+			}
+			// Mã đã tồn tại — lấy lại bản ghi hiện có để còn biết ID mà xét nội dung.
+			p, err = s.GetProgramByCode(ctx, subj.Code)
+			if err != nil {
+				return fmt.Errorf("đọc lớp học mẫu %s: %w", subj.Code, err)
+			}
+			if p.Title != subj.Title || p.Description != subj.Description {
+				p, err = s.UpdateProgram(ctx, p.ID, UpdateProgramParams{Title: &subj.Title, Description: &subj.Description})
+				if err != nil {
+					return fmt.Errorf("cập nhật lớp học mẫu %s: %w", subj.Code, err)
+				}
+			}
+		}
+		if err := s.ensureSampleContent(ctx, p.ID, subj.Code); err != nil {
+			return fmt.Errorf("tạo nội dung mẫu %s: %w", subj.Code, err)
+		}
+	}
+	return nil
 }

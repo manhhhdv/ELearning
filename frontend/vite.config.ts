@@ -11,14 +11,16 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3006,
-    // Không cho Vite tự nhảy cổng khi 3006 bận: đổi cổng ngầm sẽ làm hỏng
+    // Đổi được qua biến môi trường để chạy song song hai bản (VD: soát lỗi trên
+    // một backend khác) mà không phải sửa file cấu hình.
+    port: Number(process.env.WEB_PORT) || 3006,
+    // Không cho Vite tự nhảy cổng khi cổng đã bận: đổi cổng ngầm sẽ làm hỏng
     // CORS và redirect OAuth vì backend cấu hình cứng FRONTEND_URL.
     strictPort: true,
     proxy: {
       // Gọi API qua cùng origin để tránh vướng CORS lúc phát triển.
       '/api': {
-        target: 'http://localhost:8082',
+        target: process.env.API_TARGET || 'http://localhost:8082',
         changeOrigin: true,
       },
     },

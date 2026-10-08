@@ -2,6 +2,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,12 +23,26 @@ const (
 	KindAssignment = "assignment"
 )
 
-// Loại câu hỏi trong bài tập.
+// Loại câu hỏi trong bài tập. Bốn dạng đầu là bốn dạng chuẩn của hệ thống
+// (Bảng 3.1); QuestionMultiChoice được giữ lại cho dữ liệu đã soạn từ trước.
 const (
 	QuestionSingleChoice = "single_choice"
-	QuestionMultiChoice  = "multi_choice"
+	QuestionTrueFalse    = "true_false"
+	QuestionFillBlank    = "fill_blank"
 	QuestionEssay        = "essay"
+	QuestionMultiChoice  = "multi_choice"
 )
+
+// Mức độ nhận thức của câu hỏi.
+const (
+	LevelRemember   = "Nhận biết"
+	LevelUnderstand = "Thông hiểu"
+	LevelApply      = "Vận dụng"
+)
+
+// AutoGraded cho biết dạng câu hỏi có được chấm tự động ngay khi nộp bài không.
+// Chỉ câu tự luận cần giáo viên chấm (mục 3.4.3).
+func AutoGraded(questionType string) bool { return questionType != QuestionEssay }
 
 type User struct {
 	ID                 uuid.UUID  `json:"id"`
@@ -54,7 +69,7 @@ type Program struct {
 	Status      string `json:"status"`
 	// Cho phép học viên tự bấm ghi danh thay vì chờ admin thêm vào.
 	AllowSelfEnroll bool `json:"allowSelfEnroll"`
-	// Tự động hiện trong "Khoá học của tôi" của mọi người dùng, không cần ghi danh.
+	// Tự động hiện trong "Lớp học của tôi" của mọi người dùng, không cần ghi danh.
 	IsDefaultCourse bool       `json:"isDefaultCourse"`
 	CreatedBy       *uuid.UUID `json:"createdBy"`
 	CreatedAt       time.Time  `json:"createdAt"`
@@ -67,7 +82,7 @@ type Program struct {
 	EnrollmentCount int `json:"enrollmentCount"`
 	// Số bài học người dùng hiện tại đã hoàn thành; chỉ có giá trị ở API của học viên.
 	CompletedLessonCount int `json:"completedLessonCount"`
-	// Người đang xem đã ghi danh chưa; dùng cho trang khám phá khoá học.
+	// Người đang xem đã ghi danh chưa; dùng cho trang khám phá lớp học.
 	Enrolled bool `json:"enrolled"`
 }
 
@@ -127,13 +142,23 @@ type Assignment struct {
 type Question struct {
 	ID uuid.UUID `json:"id"`
 	// Mã ngắn cố định do người soạn đặt, không đổi khi sắp xếp lại thứ tự.
-	Code        string            `json:"code"`
-	Type        string            `json:"type"`
-	Prompt      string            `json:"prompt"`
-	Points      float64           `json:"points"`
-	Position    int               `json:"position"`
-	Explanation string            `json:"explanation"`
-	Options     []*QuestionOption `json:"options"`
+	Code   string  `json:"code"`
+	Type   string  `json:"type"`
+	Prompt string  `json:"prompt"`
+	Points float64 `json:"points"`
+	// Mức độ nhận thức: Nhận biết / Thông hiểu / Vận dụng. Rỗng = chưa phân loại.
+	Level       string `json:"level"`
+	Position    int    `json:"position"`
+	Explanation string `json:"explanation"`
+	// Đáp án gợi ý và tiêu chí chấm, chỉ dùng cho câu tự luận.
+	SampleAnswer string `json:"sampleAnswer"`
+	Rubric       string `json:"rubric"`
+	// Ý nghĩa của Options thay đổi theo Type:
+	//   single_choice / multi_choice : các phương án, IsCorrect = phương án đúng
+	//   true_false                   : mỗi dòng là một phát biểu, IsCorrect = giá trị Đúng/Sai
+	//   fill_blank                   : mỗi dòng là một đáp án được chấp nhận (IsCorrect luôn true)
+	//   essay                        : luôn rỗng
+	Options []*QuestionOption `json:"options"`
 }
 
 type QuestionOption struct {
@@ -190,13 +215,127 @@ func (s *Submission) TotalScore() float64 {
 }
 
 type SubmissionAnswer struct {
-	ID                uuid.UUID   `json:"id"`
+	ID uuid.UUID `json:"id"`
+	// Với true_false, đây là các phát biểu học sinh đánh dấu "Đúng".
 	QuestionID        uuid.UUID   `json:"questionId"`
 	SelectedOptionIDs []uuid.UUID `json:"selectedOptionIds"`
-	EssayText         string      `json:"essayText"`
-	IsCorrect         *bool       `json:"isCorrect"`
-	Score             float64     `json:"score"`
-	Comment           string      `json:"comment"`
+	// Dùng cho cả câu tự luận lẫn câu điền khuyết.
+	EssayText string  `json:"essayText"`
+	IsCorrect *bool   `json:"isCorrect"`
+	Score     float64 `json:"score"`
+	Comment   string  `json:"comment"`
+	// Điểm và nhận xét do AI gợi ý cho câu tự luận; chỉ là tham khảo cho
+	// giáo viên, điểm chính thức nằm ở Score.
+	AIScore   *float64 `json:"aiScore"`
+	AIComment string   `json:"aiComment"`
 
 	Question *Question `json:"question,omitempty"`
+}
+
+// Material là một tài liệu trong kho dùng chung toàn hệ thống (mục 4.4).
+// Khác với tài liệu đính kèm bài học, tài liệu ở đây không thuộc lớp nào.
+type Material struct {
+	ID          uuid.UUID `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Category    string    `json:"category"`
+	URL         string    `json:"url"`
+	// Rỗng khi tài liệu là link ngoài, không phải Google Drive.
+	DriveFileID string     `json:"driveFileId"`
+	Kind        string     `json:"kind"`
+	IsPublished bool       `json:"isPublished"`
+	CreatedBy   *uuid.UUID `json:"createdBy"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
+
+	CreatedByName string `json:"createdByName"`
+}
+
+// Các loại tài liệu trong kho dùng chung.
+const (
+	MaterialPDF      = "pdf"
+	MaterialSlide    = "slide"
+	MaterialDocument = "document"
+	MaterialVideo    = "video"
+	MaterialLink     = "link"
+)
+
+// PasswordResetRequest là yêu cầu đặt lại mật khẩu do người dùng gửi từ trang
+// đăng nhập. Hệ thống chưa gửi email nên admin là người cấp lại mật khẩu.
+type PasswordResetRequest struct {
+	ID    uuid.UUID `json:"id"`
+	Email string    `json:"email"`
+	// Rỗng khi email không khớp tài khoản nào trong hệ thống.
+	UserID    *uuid.UUID `json:"userId"`
+	Note      string     `json:"note"`
+	Status    string     `json:"status"`
+	HandledBy *uuid.UUID `json:"handledBy"`
+	HandledAt *time.Time `json:"handledAt"`
+	CreatedAt time.Time  `json:"createdAt"`
+
+	FullName      string `json:"fullName"`
+	HandledByName string `json:"handledByName"`
+}
+
+// ---------------------------------------------------------------------------
+// Lớp chức năng AI
+// ---------------------------------------------------------------------------
+
+// LessonPlan là giáo án do AI sinh, đã được giáo viên duyệt và lưu lại.
+// Content giữ nguyên cấu trúc JSON do lớp Service AI trả về.
+type LessonPlan struct {
+	ID              uuid.UUID       `json:"id"`
+	OwnerID         uuid.UUID       `json:"ownerId"`
+	ProgramID       *uuid.UUID      `json:"programId"`
+	Subject         string          `json:"subject"`
+	Grade           string          `json:"grade"`
+	Topic           string          `json:"topic"`
+	Objectives      string          `json:"objectives"`
+	DurationMinutes int             `json:"durationMinutes"`
+	Title           string          `json:"title"`
+	Content         json.RawMessage `json:"content"`
+	CreatedAt       time.Time       `json:"createdAt"`
+	UpdatedAt       time.Time       `json:"updatedAt"`
+
+	OwnerName string `json:"ownerName,omitempty"`
+}
+
+// AITask là một dòng nhật ký tác vụ AI, hiển thị ở mục "Tác vụ AI gần đây".
+type AITask struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"userId"`
+	Kind      string    `json:"kind"`
+	Title     string    `json:"title"`
+	Status    string    `json:"status"`
+	Detail    string    `json:"detail"`
+	Attempts  int       `json:"attempts"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// Các giá trị của AITask.Kind.
+const (
+	AIKindLessonPlan = "lesson_plan"
+	AIKindQuestions  = "questions"
+	AIKindGradeEssay = "grade_essay"
+	AIKindLesson     = "lesson"
+	AIKindChat       = "chat"
+)
+
+// AIConversation là một cuộc trò chuyện với trợ lý AI.
+type AIConversation struct {
+	ProgramID *uuid.UUID   `json:"programId"`
+	NodeID    *uuid.UUID   `json:"nodeId"`
+	ID        uuid.UUID    `json:"id"`
+	UserID    uuid.UUID    `json:"userId"`
+	Title     string       `json:"title"`
+	CreatedAt time.Time    `json:"createdAt"`
+	UpdatedAt time.Time    `json:"updatedAt"`
+	Messages  []*AIMessage `json:"messages,omitempty"`
+}
+
+type AIMessage struct {
+	ID        uuid.UUID `json:"id"`
+	Role      string    `json:"role"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"createdAt"`
 }

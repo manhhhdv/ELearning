@@ -25,7 +25,7 @@ export function MyProgramsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  // Lọc tại chỗ: danh sách khoá của một học viên vốn ngắn, không cần gọi lại máy chủ.
+  // Lọc tại chỗ: danh sách lớp của một học sinh vốn ngắn, không cần gọi lại máy chủ.
   const shown = useMemo(() => {
     const term = query.trim().toLowerCase()
     if (!term) return programs
@@ -37,7 +37,7 @@ export function MyProgramsPage() {
 
   if (loading) return <Loading />
 
-  // Khoá học coi là hoàn thành khi đã học hết số bài học của khoá đó.
+  // Lớp học coi là hoàn thành khi đã học hết số bài học của lớp đó.
   const finished = programs.filter((p) => p.lessonCount > 0 && p.completedLessonCount >= p.lessonCount).length
 
   return (
@@ -47,13 +47,13 @@ export function MyProgramsPage() {
       {error && <div className="alert alert-error">{error}</div>}
 
       <div className="stat-row">
-        <Stat icon={<IconEnrolled />} tone="blue" label="Đã ghi danh" value={`${programs.length} khoá học`} />
-        <Stat icon={<IconFinished />} tone="green" label="Đã hoàn thành" value={`${finished} khoá học`} />
+        <Stat icon={<IconEnrolled />} tone="blue" label="Đã ghi danh" value={`${programs.length} lớp học`} />
+        <Stat icon={<IconFinished />} tone="green" label="Đã hoàn thành" value={`${finished} lớp học`} />
         <Stat icon={<IconSubmitted />} tone="amber" label="Số bài đã nộp" value={`${submissions.length} bài`} />
       </div>
 
       <div className="section-head">
-        <h2>Khoá học của tôi</h2>
+        <h2>Lớp học của tôi</h2>
         {query && (
           <button className="btn btn-sm" onClick={() => setParams({})}>
             Xoá bộ lọc “{query}”
@@ -64,11 +64,11 @@ export function MyProgramsPage() {
       <div className="tray">
         {shown.length === 0 ? (
           <div className="empty" style={{ padding: '32px 20px' }}>
-            <h3>{query ? 'Không tìm thấy khoá học phù hợp' : 'Bạn chưa được ghi danh vào khoá học nào'}</h3>
+            <h3>{query ? 'Không tìm thấy lớp học phù hợp' : 'Bạn chưa được ghi danh vào lớp học nào'}</h3>
             <p>
               {query
-                ? 'Thử từ khoá khác, hoặc xoá bộ lọc để xem toàn bộ khoá học của bạn.'
-                : 'Liên hệ quản trị viên hoặc giảng viên để được thêm vào chương trình đào tạo.'}
+                ? 'Thử từ khoá khác, hoặc xoá bộ lọc để xem toàn bộ lớp học của bạn.'
+                : 'Liên hệ quản trị viên hoặc giáo viên để được thêm vào lớp học.'}
             </p>
           </div>
         ) : (

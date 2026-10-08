@@ -7,8 +7,10 @@ import type { User } from './api/types'
 interface AuthState {
   user: User | null
   loading: boolean
-  signIn: (email: string, password: string) => Promise<User>
-  signInWithToken: (token: string) => Promise<User>
+  signIn: (email: string, password: string, remember?: boolean) => Promise<User>
+  signInWithToken: (token: string, remember?: boolean) => Promise<User>
+  /** Tự đăng ký tài khoản; đăng nhập luôn sau khi tạo xong. */
+  register: (body: { email: string; fullName: string; password: string }, remember?: boolean) => Promise<User>
   signOut: () => void
   refresh: () => Promise<void>
 }
@@ -33,18 +35,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false))
   }, [])
 
-  const signIn = useCallback(async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string, remember = true) => {
     const res = await api.login(email, password)
-    setToken(res.token)
+    setToken(res.token, remember)
     setUser(res.user)
     return res.user
   }, [])
 
-  const signInWithToken = useCallback(async (token: string) => {
-    setToken(token)
+  const signInWithToken = useCallback(async (token: string, remember = true) => {
+    setToken(token, remember)
     const me = await api.me()
     setUser(me)
     return me
+  }, [])
+
+  const register = useCallback(async (
+    body: { email: string; fullName: string; password: string }, remember = true,
+  ) => {
+    const res = await api.register(body)
+    setToken(res.token, remember)
+    setUser(res.user)
+    return res.user
   }, [])
 
   const signOut = useCallback(() => {
@@ -57,8 +68,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, loading, signIn, signInWithToken, signOut, refresh }),
-    [user, loading, signIn, signInWithToken, signOut, refresh],
+    () => ({ user, loading, signIn, signInWithToken, register, signOut, refresh }),
+    [user, loading, signIn, signInWithToken, register, signOut, refresh],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
@@ -69,7 +80,7 @@ export function useAuth() {
   return ctx
 }
 
-/** Người quản lý nội dung: quản trị viên và giảng viên — thấy nút sửa/xoá/tạo mới. */
+/** Người quản lý nội dung: quản trị viên và giáo viên — thấy nút sửa/xoá/tạo mới. */
 export function canManageContent(user: User | null) {
   return user?.role === 'admin' || user?.role === 'trainer'
 }

@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -13,6 +14,10 @@ import (
 
 type authConfigResponse struct {
 	GoogleEnabled bool `json:"googleEnabled"`
+	// Có hiện nút "Đăng ký tài khoản" ở trang đăng nhập hay không.
+	SignupEnabled bool `json:"signupEnabled"`
+	// Gợi ý domain hợp lệ để người dùng biết trước khi gõ nhầm email.
+	SignupAllowedDomains string `json:"signupAllowedDomains"`
 }
 
 func (s *Server) handleAuthConfig(w http.ResponseWriter, r *http.Request) {
@@ -21,7 +26,132 @@ func (s *Server) handleAuthConfig(w http.ResponseWriter, r *http.Request) {
 		writeStoreError(w, err, "")
 		return
 	}
-	writeJSON(w, http.StatusOK, authConfigResponse{GoogleEnabled: enabled})
+	signup, err := s.resolveSignupConfig(r.Context())
+	if err != nil {
+		writeStoreError(w, err, "")
+		return
+	}
+	writeJSON(w, http.StatusOK, authConfigResponse{
+		GoogleEnabled:        enabled,
+		SignupEnabled:        signup.Enabled,
+		SignupAllowedDomains: strings.Join(signup.AllowedDomains, ", "),
+	})
+}
+
+// ---------------------------------------------------------------------------
+// Tự đăng ký tài khoản
+// ---------------------------------------------------------------------------
+
+type registerRequest struct {
+	Email    string `json:"email"`
+	FullName string `json:"fullName"`
+	Password string `json:"password"`
+}
+
+// handleRegister cho phép người dùng tự tạo tài khoản ở trang đăng nhập.
+//
+// Tài khoản luôn được tạo với vai trò Học sinh: quyền soạn nội dung hay quản
+// trị phải do admin cấp, không ai tự chọn cho mình được.
+func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
+	cfg, err := s.resolveSignupConfig(r.Context())
+	if err != nil {
+		writeStoreError(w, err, "")
+		return
+	}
+	if !cfg.Enabled {
+		writeError(w, http.StatusForbidden,
+			"Hệ thống chưa mở đăng ký. Vui lòng liên hệ quản trị viên để được cấp tài khoản.")
+		return
+	}
+
+	var req registerRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	email := strings.ToLower(trimmed(req.Email))
+	fullName := trimmed(req.FullName)
+
+	if email == "" || !strings.Contains(email, "@") {
+		writeError(w, http.StatusBadRequest, "Vui lòng nhập email hợp lệ")
+		return
+	}
+	if fullName == "" {
+		writeError(w, http.StatusBadRequest, "Vui lòng nhập họ và tên")
+		return
+	}
+	if err := auth.ValidatePassword(req.Password); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if !domainAllowed(email, cfg.AllowedDomains) {
+		writeError(w, http.StatusForbidden, fmt.Sprintf(
+			"Chỉ email thuộc %s mới đăng ký được", strings.Join(cfg.AllowedDomains, ", ")))
+		return
+	}
+
+	hash, err := auth.HashPassword(req.Password)
+	if err != nil {
+		writeStoreError(w, err, "")
+		return
+	}
+
+	u, err := s.store.CreateUser(r.Context(), store.CreateUserParams{
+		Email:    email,
+		FullName: fullName,
+		Role:     models.RoleStudent,
+		// Người dùng tự đặt mật khẩu nên không cần buộc đổi ở lần đăng nhập đầu.
+		PasswordHash: hash,
+	})
+	if err != nil {
+		if errors.Is(err, store.ErrConflict) {
+			writeError(w, http.StatusConflict,
+				"Email này đã có tài khoản. Hãy đăng nhập hoặc dùng chức năng quên mật khẩu.")
+			return
+		}
+		writeStoreError(w, err, "")
+		return
+	}
+
+	// Đăng ký xong dùng được ngay, không phải đăng nhập lại.
+	s.issueToken(w, r, u)
+}
+
+// ---------------------------------------------------------------------------
+// Quên mật khẩu
+// ---------------------------------------------------------------------------
+
+type forgotPasswordRequest struct {
+	Email string `json:"email"`
+	Note  string `json:"note"`
+}
+
+// handleForgotPassword ghi nhận yêu cầu đặt lại mật khẩu để admin xử lý.
+//
+// Hệ thống chưa gửi được email nên đây không phải luồng đặt lại bằng token.
+// Phản hồi luôn giống nhau dù email có tồn tại hay không, để trang đăng nhập
+// không trở thành công cụ dò xem email nào có trong hệ thống.
+func (s *Server) handleForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var req forgotPasswordRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	email := strings.ToLower(trimmed(req.Email))
+	if email == "" || !strings.Contains(email, "@") {
+		writeError(w, http.StatusBadRequest, "Vui lòng nhập email hợp lệ")
+		return
+	}
+
+	note := trimmed(req.Note)
+	if len([]rune(note)) > 500 {
+		note = string([]rune(note)[:500])
+	}
+	if err := s.store.CreatePasswordResetRequest(r.Context(), email, note); err != nil {
+		writeStoreError(w, err, "")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{
+		"message": "Đã gửi yêu cầu tới quản trị viên. Bạn sẽ được cấp mật khẩu mới trong thời gian sớm nhất.",
+	})
 }
 
 type loginRequest struct {

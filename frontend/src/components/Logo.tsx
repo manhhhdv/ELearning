@@ -1,11 +1,11 @@
 /**
- * Logo Tập Huấn: mũ tốt nghiệp trên nền xanh bo góc.
+ * Logo Đào Tạo: mũ tốt nghiệp trên nền xanh bo góc.
  * Giữ đồng bộ với public/favicon.svg — sửa hình ở đây thì sửa cả file kia.
  */
 
 interface Props {
   size?: number
-  /** Kèm chữ "Tập Huấn" bên phải hình. */
+  /** Kèm chữ "Đào Tạo" bên phải hình. */
   withWordmark?: boolean
   /** Dùng trên nền tối: chữ chuyển sang trắng. */
   onDark?: boolean
@@ -40,7 +40,7 @@ export function Logo({ size = 36, withWordmark = true, onDark = false }: Props) 
       <LogoMark size={size} />
       {withWordmark && (
         <span className="logo-text" style={onDark ? { color: '#fff' } : undefined}>
-          Tập Huấn
+          Đào Tạo
         </span>
       )}
     </span>

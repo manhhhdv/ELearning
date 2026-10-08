@@ -6,6 +6,7 @@ import type { Role, User } from '../api/types'
 import { useAuth } from '../auth'
 import { ImportUsersModal } from '../components/ImportUsersModal'
 import { PageHeader } from '../components/Layout'
+import { PasswordResetPanel } from '../components/PasswordResetPanel'
 import { IconPlus } from '../components/icons'
 import { EmptyState, ErrorAlert, Loading, Modal, formatDate } from '../components/ui'
 
@@ -84,6 +85,8 @@ export function UsersPage() {
       />
 
       <div className="page-body">
+        <PasswordResetPanel onPick={setSearch} />
+
         <div className="toolbar">
           <input
             className="grow" type="text" placeholder="Tìm theo tên hoặc email…"
@@ -92,9 +95,9 @@ export function UsersPage() {
           <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={{ width: 180 }}>
             <option value="">Tất cả vai trò</option>
             <option value="admin">Quản trị viên</option>
-            <option value="trainer">Giảng viên</option>
+            <option value="trainer">Giáo viên</option>
             <option value="supervisor">Giám sát</option>
-            <option value="student">Học viên</option>
+            <option value="student">Học sinh</option>
           </select>
         </div>
 
@@ -128,9 +131,9 @@ export function UsersPage() {
                           style={{ width: 140 }}
                         >
                           <option value="admin">Quản trị viên</option>
-                          <option value="trainer">Giảng viên</option>
+                          <option value="trainer">Giáo viên</option>
                           <option value="supervisor">Giám sát</option>
-                          <option value="student">Học viên</option>
+                          <option value="student">Học sinh</option>
                         </select>
                       </td>
                       <td className="tiny muted">
@@ -263,8 +266,8 @@ function CreateUserModal({
         <div className="field">
           <label htmlFor="u-role">Vai trò</label>
           <select id="u-role" value={role} onChange={(e) => setRole(e.target.value as Role)}>
-            <option value="student">Học viên</option>
-            <option value="trainer">Giảng viên</option>
+            <option value="student">Học sinh</option>
+            <option value="trainer">Giáo viên</option>
             <option value="supervisor">Giám sát — chỉ xem, không sửa được nội dung</option>
             <option value="admin">Quản trị viên</option>
           </select>

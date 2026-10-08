@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Program, TreeNode } from '../api/types'
 import { useAuth } from '../auth'
+import { AIAssistant } from '../components/AIAssistant'
 import { AssignmentPlayer } from '../components/AssignmentPlayer'
 import { CourseRail, itemMeta, learningSequence } from '../components/CourseRail'
 import {
@@ -60,7 +61,7 @@ export function CoursePage() {
         }
         setError(null)
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Không mở được khoá học'))
+      .catch((err) => setError(err instanceof Error ? err.message : 'Không mở được lớp học'))
       .finally(() => setLoading(false))
     // Cố ý bỏ nodeSlug khỏi phụ thuộc: chỉ dùng nó cho lần mở đầu tiên,
     // các lần đổi bài sau do hàm open ghi thẳng lên URL.
@@ -108,7 +109,7 @@ export function CoursePage() {
       // Cây chỉ có dữ liệu tóm tắt, lấy bản đầy đủ khi mở nội dung.
       setCurrent(node.kind === 'folder' ? node : await api.getNode(node.id))
       setNavOpen(false)
-      // replace: chuyển bài không tạo thêm mục lịch sử, nút Back vẫn quay về danh sách khoá học.
+      // replace: chuyển bài không tạo thêm mục lịch sử, nút Back vẫn quay về danh sách lớp học.
       navigate(`/hoc/${programSlug}/${node.slug}`, { replace: true })
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (err) {
@@ -135,14 +136,14 @@ export function CoursePage() {
     }
   }
 
-  if (loading) return <Loading label="Đang mở khoá học…" />
+  if (loading) return <Loading label="Đang mở lớp học…" />
 
   if (!program) {
     return (
       <div className="learner learner-shell">
         <div className="stage">
-          <div className="callout warn">{error ?? 'Không tìm thấy khoá học'}</div>
-          <Link className="cbtn" to="/hoc">Về danh sách khoá học</Link>
+          <div className="callout warn">{error ?? 'Không tìm thấy lớp học'}</div>
+          <Link className="cbtn" to="/hoc">Về danh sách lớp học</Link>
         </div>
       </div>
     )
@@ -161,12 +162,12 @@ export function CoursePage() {
       ref={shellRef}
     >
       <header className="course-topbar">
-        <Link to="/hoc" aria-label="Tập Huấn — trang chủ" style={{ display: 'inline-flex' }}>
+        <Link to="/hoc" aria-label="Đào Tạo — trang chủ" style={{ display: 'inline-flex' }}>
           <LogoMark size={32} />
         </Link>
         <Link className="back" to="/hoc">
           <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><IconChevron size={13} /></span>
-          Khoá học của tôi
+          Lớp học của tôi
         </Link>
         <button
           className="cbtn cbtn-plain cbtn-sm rail-toggle"
@@ -180,8 +181,8 @@ export function CoursePage() {
         <button
           className="icon-square rail-collapse"
           onClick={() => setRailHidden((v) => !v)}
-          title={railHidden ? 'Hiện mục lục khoá học' : 'Thu gọn mục lục khoá học'}
-          aria-label={railHidden ? 'Hiện mục lục khoá học' : 'Thu gọn mục lục khoá học'}
+          title={railHidden ? 'Hiện mục lục lớp học' : 'Thu gọn mục lục lớp học'}
+          aria-label={railHidden ? 'Hiện mục lục lớp học' : 'Thu gọn mục lục lớp học'}
         >
           {railHidden ? <IconPanelOpen /> : <IconPanelClose />}
         </button>
@@ -200,6 +201,10 @@ export function CoursePage() {
         </div>
       </header>
 
+      {/* Trợ lý AI ngay trong trình học: đây là lúc học sinh cần hỏi bài nhất.
+          Máy chủ tự nạp nội dung theo quyền truy cập. */}
+      <AIAssistant key={`${program.id}:${current?.id ?? ""}`} subject={program.title} programId={program.id} nodeId={current?.id} lessonTitle={current?.title} />
+
       <div className="course-body">
         <CourseRail tree={tree} currentId={current?.id ?? null} onOpen={open} open={navOpen} />
 
@@ -208,8 +213,8 @@ export function CoursePage() {
 
           {!current ? (
             <div className="blank">
-              <h3>Khoá học chưa có nội dung</h3>
-              <p>Giảng viên chưa đăng bài học nào cho khoá này.</p>
+              <h3>Lớp học chưa có nội dung</h3>
+              <p>Giáo viên chưa đăng bài học nào cho lớp này.</p>
             </div>
           ) : current.kind === 'folder' ? (
             <>
@@ -318,7 +323,7 @@ export function CoursePage() {
               ) : (
                 !completed && (
                   <button className="cbtn cbtn-fill cbtn-sm" onClick={toggleComplete}>
-                    Hoàn thành khoá học
+                    Hoàn thành lớp học
                   </button>
                 )
               )}

@@ -46,7 +46,7 @@ function isHeaderRow(cells: string[]): boolean {
 
 /**
  * Thứ tự cột: Email · Họ tên · Vai trò · Mật khẩu.
- * Bỏ trống vai trò thì mặc định là Học viên; bỏ trống mật khẩu thì máy chủ tự sinh.
+ * Bỏ trống vai trò thì mặc định là Học sinh; bỏ trống mật khẩu thì máy chủ tự sinh.
  */
 export function parseUsers(raw: string): UserImportParseResult {
   const items: UserImportItem[] = []
@@ -82,7 +82,7 @@ export function parseUsers(raw: string): UserImportParseResult {
     if (role === null) {
       issues.push({
         line: lineNo,
-        message: `không hiểu vai trò “${roleCell}” (dùng Học viên / Giảng viên / Giám sát / Quản trị viên)`,
+        message: `không hiểu vai trò “${roleCell}” (dùng Học sinh / Giáo viên / Giám sát / Quản trị viên)`,
       })
       return
     }
@@ -103,7 +103,7 @@ export function parseUsers(raw: string): UserImportParseResult {
 }
 
 export const SAMPLE_USERS = `Email\tHọ và tên\tVai trò\tMật khẩu
-an.nguyen@congty.vn\tNguyễn Văn An\tHọc viên\t
-binh.tran@congty.vn\tTrần Thị Bình\tGiảng viên\t
+an.nguyen@congty.vn\tNguyễn Văn An\tHọc sinh\t
+binh.tran@congty.vn\tTrần Thị Bình\tGiáo viên\t
 cuong.le@congty.vn\tLê Mạnh Cường\tGiám sát\tMatKhau123
 dung.pham@congty.vn\tPhạm Thị Dung\t\t`

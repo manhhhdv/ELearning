@@ -1,7 +1,7 @@
 /* ============================================================
    Nội dung tự soạn: khối hiển thị (.rich) và trình soạn thảo (.rte)
-   Dùng chung cho khu quản trị lẫn khu học viên — biến màu tự chọn
-   theo ngữ cảnh: trong .learner lấy bảng màu học viên, ngoài lấy bảng chung.
+   Dùng chung cho khu quản trị lẫn khu học sinh — biến màu tự chọn
+   theo ngữ cảnh: trong .learner lấy bảng màu học sinh, ngoài lấy bảng chung.
    ============================================================ */
 
 .rich {
@@ -12,7 +12,7 @@
   --rich-ink: var(--c-ink, var(--text));
 
   color: var(--rich-ink);
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.72;
   overflow-wrap: break-word;
 }
@@ -151,7 +151,7 @@
   background: none;
   border-radius: 5px;
   padding: 4px 8px;
-  font-size: 12.5px;
+  font-size: 14px;
   font-family: inherit;
   color: var(--text-muted);
   cursor: pointer;
@@ -167,7 +167,7 @@
   background: none;
   border-radius: 4px;
   padding: 4px 10px;
-  font-size: 12.5px;
+  font-size: 14px;
   font-family: inherit;
   color: var(--text-muted);
   cursor: pointer;
@@ -192,7 +192,7 @@
   border-radius: 0;
   resize: vertical;
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
-  font-size: 13px;
+  font-size: 14.5px;
   line-height: 1.65;
   min-height: 160px;
 }
@@ -210,13 +210,13 @@
 .rte-help summary {
   cursor: pointer;
   padding: 6px 10px;
-  font-size: 12.5px;
+  font-size: 14px;
   color: var(--text-muted);
   user-select: none;
 }
-.rte-help ul { margin: 0; padding: 0 14px 10px 30px; font-size: 12.5px; color: var(--text-muted); }
+.rte-help ul { margin: 0; padding: 0 14px 10px 30px; font-size: 14px; color: var(--text-muted); }
 .rte-help li { margin: 3px 0; }
-.rte-help code { font-size: 12px; background: var(--surface-3); border-radius: 4px; padding: 1px 4px; }
+.rte-help code { font-size: 13.5px; background: var(--surface-3); border-radius: 4px; padding: 1px 4px; }
 
 @media (max-width: 820px) {
   .rte-split .rte-panes { grid-template-columns: 1fr; }

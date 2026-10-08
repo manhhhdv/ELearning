@@ -5,7 +5,7 @@ import type { AssignmentInput, LessonAttachmentInput, LessonInput } from '../api
 import type { ContentType, TreeNode } from '../api/types'
 import { CONTENT_TYPE_LABEL } from '../api/types'
 import { AssignmentResultsPanel } from './AssignmentResultsPanel'
-import { IconChart, IconPlus, IconTrash } from './icons'
+import { IconChart, IconDownload, IconPlus, IconTrash } from './icons'
 import { QuestionEditor } from './QuestionEditor'
 import { RichTextEditor } from './RichTextEditor'
 import { ErrorAlert, SuccessAlert } from './ui'
@@ -47,11 +47,15 @@ export function NodeEditor({ node, onSaved, onDeleted, readOnly = false }: Props
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [tab, setTab] = useState<'questions' | 'results'>('questions')
+  // Chỗ trên đầu khung soạn để trình soạn câu hỏi đặt thanh công cụ của nó vào,
+  // giáo viên khỏi phải cuộn qua form cài đặt mới thấy nút.
+  const [toolSlot, setToolSlot] = useState<HTMLDivElement | null>(null)
 
   // Bài đọc tự soạn thay hẳn khung nhúng Google Drive bằng nội dung viết trong hệ thống.
   const isRichText = contentType === 'richtext'
-  // Bài tài liệu không nhúng gì cả: chỉ là danh sách file cho học viên tải về.
+  // Bài tài liệu không nhúng gì cả: chỉ là danh sách file cho học sinh tải về.
   const isMaterials = contentType === 'materials'
 
   // Nạp lại form khi người dùng chọn một nút khác trên cây.
@@ -133,6 +137,19 @@ export function NodeEditor({ node, onSaved, onDeleted, readOnly = false }: Props
     setAttachments(next)
   }
 
+  /** Tải bài học về dạng Word — lấy theo nội dung đã lưu trên máy chủ. */
+  const exportLesson = async () => {
+    setExporting(true)
+    setError(null)
+    try {
+      await api.exportNode(node.id)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không xuất được tệp Word')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const remove = async () => {
     const extra = node.children.length > 0 ? '\n\nToàn bộ nội dung bên trong cũng sẽ bị xoá.' : ''
     if (!confirm(`Xoá “${node.title}”?${extra}`)) return
@@ -152,7 +169,18 @@ export function NodeEditor({ node, onSaved, onDeleted, readOnly = false }: Props
           {readOnly && <span className="badge" style={{ marginLeft: 6 }}>Chỉ xem</span>}
           <h2 style={{ marginTop: 8 }}>{node.title}</h2>
         </div>
-        {!readOnly && <button className="btn btn-danger btn-sm" onClick={remove}>Xoá</button>}
+        <div className="wrap-gap">
+          <div ref={setToolSlot} style={{ display: 'contents' }} />
+          {node.kind === 'lesson' && (
+            <button
+              className="btn btn-sm" onClick={exportLesson} disabled={exporting}
+              title="Tải bài học dạng Word (.docx) theo nội dung đã lưu"
+            >
+              <IconDownload /> {exporting ? 'Đang xuất…' : 'Xuất Word'}
+            </button>
+          )}
+          {!readOnly && <button className="btn btn-danger btn-sm" onClick={remove}>Xoá</button>}
+        </div>
       </div>
 
       <form onSubmit={save}>
@@ -237,7 +265,7 @@ export function NodeEditor({ node, onSaved, onDeleted, readOnly = false }: Props
                     <IconPlus /> Thêm tài liệu
                   </button>
                   <div className="hint">
-                    Mỗi dòng là một file học viên tải về: đặt tên hiển thị và dán link tải
+                    Mỗi dòng là một file học sinh tải về: đặt tên hiển thị và dán link tải
                     (Google Drive hoặc URL bất kỳ). Với file Drive nhớ đặt quyền chia sẻ
                     “Bất kỳ ai có đường liên kết”. Bỏ trống tên thì hệ thống hiển thị chính link.
                   </div>
@@ -274,7 +302,7 @@ export function NodeEditor({ node, onSaved, onDeleted, readOnly = false }: Props
               )}
 
               <div className="field">
-                <label htmlFor="n-body">{isRichText ? 'Nội dung bài học' : 'Ghi chú cho học viên'}</label>
+                <label htmlFor="n-body">{isRichText ? 'Nội dung bài học' : 'Ghi chú cho học sinh'}</label>
                 <RichTextEditor
                   id="n-body"
                   value={body}
@@ -283,7 +311,7 @@ export function NodeEditor({ node, onSaved, onDeleted, readOnly = false }: Props
                   rows={isRichText ? 20 : 8}
                   placeholder={isRichText
                     ? 'Viết nội dung bài học ở đây — dùng thanh công cụ hoặc gõ markdown trực tiếp.'
-                    : 'Ghi chú thêm cho học viên (không bắt buộc).'}
+                    : 'Ghi chú thêm cho học sinh (không bắt buộc).'}
                 />
               </div>
             </>
@@ -339,7 +367,7 @@ export function NodeEditor({ node, onSaved, onDeleted, readOnly = false }: Props
                   Trộn thứ tự câu hỏi và phương án
                 </label>
                 <div className="hint">
-                  Mỗi lượt làm bài có một thứ tự riêng, giữ nguyên khi học viên tải lại trang.
+                  Mỗi lượt làm bài có một thứ tự riêng, giữ nguyên khi học sinh tải lại trang.
                 </div>
               </div>
             </>
@@ -347,11 +375,11 @@ export function NodeEditor({ node, onSaved, onDeleted, readOnly = false }: Props
 
           <label className="checkbox">
             <input type="checkbox" checked={isPublished} onChange={(e) => setIsPublished(e.target.checked)} />
-            Hiển thị với học viên
+            Hiển thị với học sinh
           </label>
           <label className="checkbox">
             <input type="checkbox" checked={isLocked} onChange={(e) => setIsLocked(e.target.checked)} />
-            Khoá nội dung với học viên
+            Khoá nội dung với học sinh
           </label>
         </div>
         </fieldset>
@@ -376,13 +404,18 @@ export function NodeEditor({ node, onSaved, onDeleted, readOnly = false }: Props
               className={`btn btn-sm ${tab === 'results' ? 'btn-primary' : ''}`}
               onClick={() => setTab('results')}
             >
-              <IconChart /> Kết quả học viên
+              <IconChart /> Kết quả học sinh
             </button>
           </div>
 
-          {tab === 'questions'
-            ? <QuestionEditor node={node} onChanged={onSaved} readOnly={readOnly} />
-            : <AssignmentResultsPanel node={node} />}
+          {/* Luôn giữ trình soạn câu hỏi, chỉ ẩn đi, để thanh công cụ trên đầu không biến mất khi xem kết quả. */}
+          <div hidden={tab !== 'questions'}>
+            <QuestionEditor
+              node={node} onChanged={onSaved} readOnly={readOnly}
+              toolbarTarget={toolSlot} onShowQuestions={() => setTab('questions')}
+            />
+          </div>
+          {tab === 'results' && <AssignmentResultsPanel node={node} />}
         </div>
       )}
     </div>

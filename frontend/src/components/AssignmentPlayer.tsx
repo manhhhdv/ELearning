@@ -14,7 +14,7 @@ interface Props {
   node: TreeNode
   programTitle: string
   onSubmitted: () => void
-  /** Điều hướng khoá học, chỉ hiện khi học viên chưa vào màn hình làm bài. */
+  /** Điều hướng lớp học, chỉ hiện khi học sinh chưa vào màn hình làm bài. */
   prevNode: TreeNode | null
   nextNode: TreeNode | null
   onNavigate: (node: TreeNode) => void
@@ -29,7 +29,7 @@ export function AssignmentPlayer({
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [taking, setTaking] = useState(false)
-  // Chặn nộp trùng khi đồng hồ về 0 đúng lúc học viên bấm nút.
+  // Chặn nộp trùng khi đồng hồ về 0 đúng lúc học sinh bấm nút.
   const submittingRef = useRef(false)
 
   const load = useCallback(async () => {
@@ -41,7 +41,7 @@ export function AssignmentPlayer({
         (data.node.assignment?.questions ?? []).map(
           (q) => [q.id, prev[q.id] ?? { options: [], essay: '' }]),
       ))
-      // Học viên tải lại trang giữa chừng: quay về đúng màn hình làm bài, đồng hồ vẫn chạy tiếp.
+      // Học sinh tải lại trang giữa chừng: quay về đúng màn hình làm bài, đồng hồ vẫn chạy tiếp.
       setTaking(data.session !== null)
       setError(null)
     } catch (err) {
@@ -100,6 +100,10 @@ export function AssignmentPlayer({
   const outOfAttempts = attemptsLeft !== null && attemptsLeft <= 0
   const best = view.submissions.reduce<number | null>(
     (max, s) => Math.max(max ?? 0, s.autoScore + (s.manualScore ?? 0)), null)
+  // Bài còn câu tự luận chưa chấm chỉ mới có điểm phần trắc nghiệm. Hiển thị
+  // con số đó như "điểm cao nhất" khiến học sinh tưởng mình đã mất điểm, nên
+  // phải nói rõ đây là điểm tạm tính.
+  const hasPending = view.submissions.some((s) => s.status !== 'graded')
 
   const begin = async () => {
     setBusy(true)
@@ -118,21 +122,36 @@ export function AssignmentPlayer({
     }
   }
 
+  /**
+   * Ghi lựa chọn của học sinh.
+   * Với câu đúng/sai, `options` chứa ID của các phát biểu được đánh dấu "Đúng";
+   * phát biểu không nằm trong danh sách được hiểu là "Sai".
+   */
   const pick = (q: Question, optionId: string, checked: boolean) => {
     setDraft((prev) => {
       const cur = prev[q.id] ?? { options: [], essay: '' }
       const options = q.type === 'single_choice'
         ? [optionId]
         : checked
-          ? [...cur.options, optionId]
+          ? [...cur.options.filter((id) => id !== optionId), optionId]
           : cur.options.filter((id) => id !== optionId)
       return { ...prev, [q.id]: { ...cur, options } }
     })
   }
 
+  const setEssay = (questionId: string, essay: string) => {
+    setDraft((prev) => ({
+      ...prev,
+      [questionId]: { options: prev[questionId]?.options ?? [], essay },
+    }))
+  }
+
   const answeredCount = questions.filter((q) => {
     const a = draft[q.id]
-    return q.type === 'essay' ? !!a?.essay.trim() : !!a?.options.length
+    // Câu đúng/sai luôn coi như đã trả lời: không đánh dấu nghĩa là chọn "Sai" cho mọi phát biểu.
+    if (q.type === 'true_false') return true
+    if (q.type === 'essay' || q.type === 'fill_blank') return !!a?.essay.trim()
+    return !!a?.options.length
   }).length
 
 
@@ -157,8 +176,11 @@ export function AssignmentPlayer({
           <div className="quiz-head">
             <div className="quiz-stats">
               <div>
-                <span>Điểm cao nhất</span>
+                <span>{hasPending ? 'Điểm tạm tính' : 'Điểm cao nhất'}</span>
                 <b>{best === null ? '—' : `${formatScore(best)} / ${formatScore(totalPoints)}`}</b>
+                {hasPending && (
+                  <small className="stat-note">Chưa gồm điểm tự luận đang chờ chấm</small>
+                )}
               </div>
               <div>
                 <span>Lượt làm bài</span>
@@ -274,22 +296,68 @@ export function AssignmentPlayer({
                 <span className="grow" />
                 <span className="pill">{formatScore(q.points)} điểm</span>
                 {q.type === 'multi_choice' && <span className="pill pill-blue">Chọn nhiều đáp án</span>}
+                {q.type === 'true_false' && <span className="pill pill-blue">Đúng / Sai</span>}
+                {q.type === 'fill_blank' && <span className="pill pill-blue">Điền khuyết</span>}
                 {q.type === 'essay' && <span className="pill pill-blue">Tự luận</span>}
               </div>
 
               <div className="stem">{q.prompt}</div>
 
-              {q.type === 'essay' ? (
+              {/* Tự luận và điền khuyết đều nhập bằng bàn phím, khác nhau ở kích thước ô nhập. */}
+              {q.type === 'essay' && (
                 <textarea
                   className="essay-box"
                   value={draft[q.id]?.essay ?? ''}
-                  onChange={(e) => setDraft((prev) => ({
-                    ...prev,
-                    [q.id]: { options: prev[q.id]?.options ?? [], essay: e.target.value },
-                  }))}
+                  onChange={(e) => setEssay(q.id, e.target.value)}
                   placeholder="Nhập câu trả lời của bạn…"
                 />
-              ) : (
+              )}
+
+              {q.type === 'fill_blank' && (
+                <input
+                  className="blank-box"
+                  type="text"
+                  value={draft[q.id]?.essay ?? ''}
+                  onChange={(e) => setEssay(q.id, e.target.value)}
+                  placeholder="Điền vào chỗ trống…"
+                />
+              )}
+
+              {q.type === 'true_false' && (
+                <div className="tf-list">
+                  {q.options.map((o) => {
+                    const on = draft[q.id]?.options.includes(o.id) ?? false
+                    return (
+                      <div className="tf-row" key={o.id}>
+                        <span className="tf-text">{o.content}</span>
+                        <div className="tf-pick">
+                          {/* Không chọn gì cũng được chấm: khi đó phát biểu tính là "Sai". */}
+                          <label className={`tf-opt ${on ? 'on' : ''}`}>
+                            <input
+                              type="radio"
+                              name={`tf-${o.id}`}
+                              checked={on}
+                              onChange={() => pick(q, o.id, true)}
+                            />
+                            Đúng
+                          </label>
+                          <label className={`tf-opt ${!on ? 'on' : ''}`}>
+                            <input
+                              type="radio"
+                              name={`tf-${o.id}`}
+                              checked={!on}
+                              onChange={() => pick(q, o.id, false)}
+                            />
+                            Sai
+                          </label>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {(q.type === 'single_choice' || q.type === 'multi_choice') && (
                 q.options.map((o) => {
                   const on = draft[q.id]?.options.includes(o.id) ?? false
                   return (

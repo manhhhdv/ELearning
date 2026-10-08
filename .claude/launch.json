@@ -7,6 +7,13 @@
       "runtimeArgs": ["run", "dev"],
       "port": 3006,
       "cwd": "frontend"
+    },
+    {
+      "name": "elearning-api",
+      "runtimeExecutable": "go",
+      "runtimeArgs": ["run", "./cmd/server"],
+      "port": 8082,
+      "cwd": "backend"
     }
   ]
 }

@@ -43,7 +43,7 @@ export function AssignmentResultsPanel({ node }: { node: TreeNode }) {
 
       <div className="stat-row" style={{ gap: 14, marginBottom: 24 }}>
         <Metric label="Lượt nộp" value={String(results.submissionCount)} />
-        <Metric label="Học viên đã làm" value={String(results.studentCount)} />
+        <Metric label="Học sinh đã làm" value={String(results.studentCount)} />
         <Metric label="Chờ chấm" value={String(results.pendingCount)} tone={results.pendingCount > 0 ? 'warn' : undefined} />
         <Metric
           label="Điểm trung bình"
@@ -113,17 +113,17 @@ export function AssignmentResultsPanel({ node }: { node: TreeNode }) {
         </table>
       </div>
 
-      <h3 style={{ marginBottom: 10 }}>Bài nộp của học viên</h3>
+      <h3 style={{ marginBottom: 10 }}>Bài nộp của học sinh</h3>
       <div className="card">
         {submissions.length === 0 ? (
           <div className="empty" style={{ padding: '30px 20px' }}>
-            <h3>Chưa có học viên nào nộp bài</h3>
+            <h3>Chưa có học sinh nào nộp bài</h3>
           </div>
         ) : (
           <table>
             <thead>
               <tr>
-                <th>Học viên</th><th style={{ width: 80 }}>Lượt</th>
+                <th>Học sinh</th><th style={{ width: 80 }}>Lượt</th>
                 <th style={{ width: 170 }}>Nộp lúc</th><th style={{ width: 130 }}>Điểm</th>
                 <th style={{ width: 120 }}>Trạng thái</th><th />
               </tr>

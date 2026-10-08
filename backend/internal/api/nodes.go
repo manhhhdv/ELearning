@@ -347,8 +347,24 @@ func stripAnswers(n *models.Node) {
 	if n.Assignment == nil {
 		return
 	}
-	for _, q := range n.Assignment.Questions {
+	stripQuestionAnswers(n.Assignment.Questions)
+}
+
+// stripQuestionAnswers xoá mọi dấu vết đáp án khỏi danh sách câu hỏi.
+//
+// Không đủ nếu chỉ tắt cờ IsCorrect: với câu điền khuyết thì chính nội dung
+// phương án là đáp án, còn câu tự luận có sẵn đáp án gợi ý và tiêu chí chấm.
+// Cả hai đều phải bị gỡ bỏ trước khi gửi xuống trình duyệt của học viên.
+func stripQuestionAnswers(questions []*models.Question) {
+	for _, q := range questions {
 		q.Explanation = ""
+		q.SampleAnswer = ""
+		q.Rubric = ""
+
+		if q.Type == models.QuestionFillBlank {
+			q.Options = []*models.QuestionOption{}
+			continue
+		}
 		for _, o := range q.Options {
 			o.IsCorrect = false
 		}

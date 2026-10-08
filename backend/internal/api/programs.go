@@ -22,7 +22,7 @@ type access struct {
 	CanAudit bool
 }
 
-// isDefaultCourseVisible cho biết một khoá học mặc định có nên hiện với người chưa
+// isDefaultCourseVisible cho biết một lớp học mặc định có nên hiện với người chưa
 // ghi danh hay không — chỉ khi đã xuất bản, tránh lộ nội dung nháp cho người ngoài.
 func isDefaultCourseVisible(p *models.Program) bool {
 	return p.IsDefaultCourse && p.Status == "published"
@@ -40,20 +40,8 @@ func (s *Server) programAccess(r *http.Request, programID uuid.UUID) (access, er
 		// nhưng không sửa/xoá/chấm bài — CanManage luôn false.
 		return access{CanView: true, CanAudit: true}, nil
 	case models.RoleTrainer:
-		program, err := s.store.GetProgram(r.Context(), programID, uuid.Nil)
-		if err != nil {
-			return access{}, err
-		}
-		if program.CreatedBy != nil && *program.CreatedBy == claims.UserID {
-			return access{CanManage: true, CanView: true, CanAudit: true}, nil
-		}
-		role, err := s.store.EnrollmentRole(r.Context(), programID, claims.UserID)
-		if err != nil {
-			return access{}, err
-		}
-		manage := role == "trainer"
-		canView := role != "" || isDefaultCourseVisible(program)
-		return access{CanManage: manage, CanView: canView, CanAudit: manage}, nil
+		// Giáo viên có toàn quyền như admin trên mọi chương trình.
+		return access{CanManage: true, CanView: true, CanAudit: true}, nil
 	default:
 		role, err := s.store.EnrollmentRole(r.Context(), programID, claims.UserID)
 		if err != nil {
@@ -62,7 +50,7 @@ func (s *Server) programAccess(r *http.Request, programID uuid.UUID) (access, er
 		if role != "" {
 			return access{CanView: true}, nil
 		}
-		// Chưa ghi danh nhưng có thể vẫn xem được nếu đây là khoá học mặc định —
+		// Chưa ghi danh nhưng có thể vẫn xem được nếu đây là lớp học mặc định —
 		// tự động hiện với mọi người, không cần dòng enrollment.
 		program, err := s.store.GetProgram(r.Context(), programID, uuid.Nil)
 		if err != nil {
@@ -117,7 +105,7 @@ func (s *Server) handleListPrograms(w http.ResponseWriter, r *http.Request) {
 		filter.ViewerID = claims.UserID
 		filter.Status = "published"
 	case models.RoleTrainer:
-		// Giảng viên chỉ thấy chương trình mình tạo hoặc được ghi danh vào.
+		// Giáo viên chỉ thấy chương trình mình tạo hoặc được ghi danh vào.
 		filter.VisibleToUserID = claims.UserID
 	}
 
@@ -164,7 +152,7 @@ func (s *Server) handleCreateProgram(w http.ResponseWriter, r *http.Request) {
 
 	claims, _ := auth.FromContext(r.Context())
 	if req.IsDefaultCourse && claims.Role != models.RoleAdmin {
-		writeError(w, http.StatusForbidden, "Chỉ quản trị viên mới đặt được khoá học mặc định")
+		writeError(w, http.StatusForbidden, "Chỉ quản trị viên mới đặt được lớp học mặc định")
 		return
 	}
 	program, err := s.store.CreateProgram(r.Context(), store.CreateProgramParams{
@@ -250,7 +238,7 @@ func (s *Server) handleUpdateProgram(w http.ResponseWriter, r *http.Request) {
 	}
 	claims, _ := auth.FromContext(r.Context())
 	if req.IsDefaultCourse != nil && claims.Role != models.RoleAdmin {
-		writeError(w, http.StatusForbidden, "Chỉ quản trị viên mới đổi được khoá học mặc định")
+		writeError(w, http.StatusForbidden, "Chỉ quản trị viên mới đổi được lớp học mặc định")
 		return
 	}
 
@@ -330,4 +318,22 @@ func validProgramStatus(status string) bool {
 		return true
 	}
 	return false
+}
+
+// handleProgramGradebook trả về bảng điểm bài tập của cả chương trình.
+// Chỉ xem, nên mở cho cả người quản lý lẫn vai trò Giám sát.
+func (s *Server) handleProgramGradebook(w http.ResponseWriter, r *http.Request) {
+	programID, ok := urlUUID(w, r, "programID")
+	if !ok {
+		return
+	}
+	if _, ok := s.requireProgramAudit(w, r, programID); !ok {
+		return
+	}
+	book, err := s.store.ProgramGradebook(r.Context(), programID)
+	if err != nil {
+		writeStoreError(w, err, "")
+		return
+	}
+	writeJSON(w, http.StatusOK, book)
 }

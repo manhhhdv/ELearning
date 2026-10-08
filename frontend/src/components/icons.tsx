@@ -239,3 +239,16 @@ export const IconGoogle = ({ size = 17 }: IconProps) => (
     <path fill="#EA4335" d="M24 10.6c3.2 0 6 1.1 8.2 3.2l6.2-6.2C34.7 4.1 29.8 2 24 2 15.6 2 8.3 6.7 4.7 13.9l7.2 5.6c1.7-5.1 6.5-8.9 12.1-8.9z" />
   </svg>
 )
+
+export const IconSparkles = ({ size = 15, className }: IconProps) => (
+  <svg {...svgProps(size, className)}>
+    <path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3Z" />
+    <path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2Z" />
+  </svg>
+)
+
+export const IconChat = ({ size = 15, className }: IconProps) => (
+  <svg {...svgProps(size, className)}>
+    <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.9 9.9 0 0 1-4.2-.9L3 20.5l1.5-4.3A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4Z" />
+  </svg>
+)

@@ -4,6 +4,7 @@ import { api } from '../api/client'
 import { QUESTION_TYPE_LABEL } from '../api/types'
 import type { ImportFormat } from './questionImport'
 import { SAMPLE_TABLE, SAMPLE_TEXT, parseQuestions } from './questionImport'
+import { FilePicker } from './FilePicker'
 import { Modal } from './ui'
 
 interface Props {
@@ -120,19 +121,13 @@ export function ImportQuestionsModal({ nodeId, onClose, onImported }: Props) {
 
       {format === 'table' && (
         <div className="field">
-          <label htmlFor="import-file">Hoặc tải file lên (.xlsx, .csv)</label>
-          <input
-            id="import-file"
-            type="file"
+          <label>Hoặc tải file lên (.xlsx, .csv)</label>
+          <FilePicker
             accept=".xlsx,.csv"
             disabled={uploading}
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              e.target.value = ''
-              if (file) void handleFile(file)
-            }}
+            label={uploading ? 'Đang đọc file…' : 'Chọn file'}
+            onPick={(file) => void handleFile(file)}
           />
-          {uploading && <span className="tiny muted" style={{ marginLeft: 8 }}>Đang đọc file…</span>}
         </div>
       )}
 

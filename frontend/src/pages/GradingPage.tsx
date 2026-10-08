@@ -22,7 +22,7 @@ export function GradingPage() {
         if (list.length === 0) setLoading(false)
       })
       .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Không tải được chương trình')
+        setError(err instanceof Error ? err.message : 'Không tải được lớp học')
         setLoading(false)
       })
   }, [])
@@ -44,7 +44,7 @@ export function GradingPage() {
 
   return (
     <>
-      <PageHeader title="Chấm bài" subtitle="Bài nộp của học viên trong các chương trình bạn phụ trách" />
+      <PageHeader title="Chấm bài" subtitle="Bài nộp của học sinh trong các lớp học bạn phụ trách" />
       <div className="page-body">
         <div className="toolbar">
           <select
@@ -53,7 +53,7 @@ export function GradingPage() {
             className="grow"
             style={{ maxWidth: 380 }}
           >
-            {programs.length === 0 && <option value="">Chưa có chương trình nào</option>}
+            {programs.length === 0 && <option value="">Chưa có lớp học nào</option>}
             {programs.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
           </select>
           <label className="checkbox">
@@ -71,7 +71,7 @@ export function GradingPage() {
             ) : (
               <table>
                 <thead>
-                  <tr><th>Học viên</th><th>Bài tập</th><th>Lượt</th><th>Nộp lúc</th><th>Điểm</th><th>Trạng thái</th><th></th></tr>
+                  <tr><th>Học sinh</th><th>Bài tập</th><th>Lượt</th><th>Nộp lúc</th><th>Điểm</th><th>Trạng thái</th><th></th></tr>
                 </thead>
                 <tbody>
                   {items.map((s) => (

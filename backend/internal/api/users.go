@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -194,6 +195,13 @@ func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Cấp mật khẩu mới chính là xử lý xong yêu cầu quên mật khẩu (nếu có),
+	// nên tự đóng để admin không phải bấm thêm một lần nữa.
+	claims, _ := auth.FromContext(r.Context())
+	if err := s.store.ResolvePasswordResetsForUser(r.Context(), userID, claims.UserID); err != nil {
+		slog.Warn("không đóng được yêu cầu đặt lại mật khẩu", "lỗi", err)
+	}
+
 	user, err := s.store.GetUserByID(r.Context(), userID)
 	if err != nil {
 		writeStoreError(w, err, "Không tìm thấy tài khoản")
@@ -243,4 +251,45 @@ func validRole(role string) bool {
 		return true
 	}
 	return false
+}
+
+// ---------------------------------------------------------------------------
+// Yêu cầu đặt lại mật khẩu — admin xử lý thay cho việc gửi email
+// ---------------------------------------------------------------------------
+
+func (s *Server) handleListPasswordResets(w http.ResponseWriter, r *http.Request) {
+	pendingOnly := r.URL.Query().Get("pending") == "true"
+	items, err := s.store.ListPasswordResetRequests(r.Context(), pendingOnly)
+	if err != nil {
+		writeStoreError(w, err, "")
+		return
+	}
+	writeJSON(w, http.StatusOK, items)
+}
+
+type resolveResetRequest struct {
+	// "done" khi đã cấp mật khẩu mới, "rejected" khi bỏ qua yêu cầu.
+	Status string `json:"status"`
+}
+
+func (s *Server) handleResolvePasswordReset(w http.ResponseWriter, r *http.Request) {
+	requestID, ok := urlUUID(w, r, "requestID")
+	if !ok {
+		return
+	}
+	var req resolveResetRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if req.Status != "done" && req.Status != "rejected" {
+		writeError(w, http.StatusBadRequest, "Trạng thái chỉ nhận giá trị done hoặc rejected")
+		return
+	}
+
+	claims, _ := auth.FromContext(r.Context())
+	if err := s.store.ResolvePasswordResetRequest(r.Context(), requestID, claims.UserID, req.Status); err != nil {
+		writeStoreError(w, err, "Không tìm thấy yêu cầu đang chờ xử lý")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

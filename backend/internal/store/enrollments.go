@@ -29,7 +29,7 @@ func (s *Store) Unenroll(ctx context.Context, programID, userID uuid.UUID) error
 	return nil
 }
 
-// ListProgramEnrollments liệt kê học viên / giảng viên của một chương trình.
+// ListProgramEnrollments liệt kê học viên / giáo viên của một chương trình.
 func (s *Store) ListProgramEnrollments(ctx context.Context, programID uuid.UUID) ([]*models.Enrollment, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT e.id, e.program_id, e.user_id, e.role, e.enrolled_at, u.email, u.full_name

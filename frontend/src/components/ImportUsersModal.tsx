@@ -5,6 +5,7 @@ import type { UserImportReport, UserImportResult } from '../api/client'
 import { ROLE_LABEL } from '../api/types'
 import type { Role } from '../api/types'
 import { SAMPLE_USERS, parseUsers } from './userImport'
+import { FilePicker } from './FilePicker'
 import { Modal } from './ui'
 
 interface Props {
@@ -98,7 +99,7 @@ export function ImportUsersModal({ onClose, onImported }: Props) {
         <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 13.5 }}>Cách viết bảng</summary>
         <ul className="hint" style={{ paddingLeft: 18, marginTop: 8 }}>
           <li>Thứ tự cột: <b>Email · Họ và tên · Vai trò · Mật khẩu</b>.</li>
-          <li><b>Vai trò</b> ghi <code>Học viên</code>, <code>Giảng viên</code>, <code>Giám sát</code> hoặc <code>Quản trị viên</code>; để trống thì mặc định là Học viên.</li>
+          <li><b>Vai trò</b> ghi <code>Học sinh</code>, <code>Giáo viên</code>, <code>Giám sát</code> hoặc <code>Quản trị viên</code>; để trống thì mặc định là Học sinh.</li>
           <li><b>Mật khẩu</b> để trống thì hệ thống tự sinh ngẫu nhiên; nếu tự đặt thì cần ít nhất 8 ký tự, gồm cả chữ và số.</li>
           <li>Email đã có tài khoản sẽ được bỏ qua, không ghi đè dữ liệu cũ.</li>
           <li>Mọi tài khoản mới đều được yêu cầu đổi mật khẩu ở lần đăng nhập đầu tiên.</li>
@@ -115,19 +116,13 @@ export function ImportUsersModal({ onClose, onImported }: Props) {
       </details>
 
       <div className="field">
-        <label htmlFor="import-users-file">Tải file lên (.xlsx, .csv)</label>
-        <input
-          id="import-users-file"
-          type="file"
+        <label>Tải file lên (.xlsx, .csv)</label>
+        <FilePicker
           accept=".xlsx,.csv"
           disabled={uploading}
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            e.target.value = ''
-            if (file) void handleFile(file)
-          }}
+          label={uploading ? 'Đang đọc file…' : 'Chọn file'}
+          onPick={(file) => void handleFile(file)}
         />
-        {uploading && <span className="tiny muted" style={{ marginLeft: 8 }}>Đang đọc file…</span>}
       </div>
 
       <div className="field">

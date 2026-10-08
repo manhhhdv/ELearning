@@ -121,9 +121,9 @@ export function CourseRail({ tree, currentId, onOpen, open = false }: Props) {
   }
 
   return (
-    <nav className={`rail ${open ? 'open' : ''}`} aria-label="Nội dung khoá học">
+    <nav className={`rail ${open ? 'open' : ''}`} aria-label="Nội dung lớp học">
       <div className="rail-head">
-        <h2>Nội dung khoá học</h2>
+        <h2>Nội dung lớp học</h2>
         <div className="rail-progress">
           <div className="bar"><i style={{ width: `${percent}%` }} /></div>
           <span className="pct">{percent}%</span>

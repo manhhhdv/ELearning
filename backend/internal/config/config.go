@@ -31,9 +31,21 @@ type Config struct {
 
 	FrontendURL string
 
+	// Cấu hình AI mặc định. Đây chỉ là giá trị dự phòng: admin đặt khoá qua
+	// giao diện thì giá trị trong app_settings được ưu tiên. Khoá chỉ tồn tại
+	// ở máy chủ, không bao giờ gửi xuống trình duyệt.
+	GeminiAPIKey string
+	GeminiModel  string
+
 	SeedAdminEmail    string
 	SeedAdminPassword string
 	SeedAdminName     string
+
+	// Tạo sẵn vài lớp học mẫu (Toán, Ngữ văn, Vật lý, Hóa học) lúc khởi
+	// động để có ngay dữ liệu thử nghiệm. Mặc định bật ở development, tắt ở
+	// production — đặt SEED_SAMPLE_SUBJECTS=true để chủ động bật ở production
+	// (VD: môi trường demo/UAT chạy trên hạ tầng production).
+	SeedSampleSubjects bool
 }
 
 func Load() (*Config, error) {
@@ -53,10 +65,15 @@ func Load() (*Config, error) {
 		GoogleAllowedDomains:    envList("GOOGLE_ALLOWED_DOMAINS", ""),
 		GoogleAutoProvisionRole: env("GOOGLE_AUTO_PROVISION_ROLE", ""),
 		FrontendURL:             env("FRONTEND_URL", "http://localhost:3006"),
+		GeminiAPIKey:            env("GEMINI_API_KEY", ""),
+		GeminiModel:             env("GEMINI_MODEL", ""),
 		SeedAdminEmail:          env("SEED_ADMIN_EMAIL", "admin@elearning.local"),
 		SeedAdminPassword:       env("SEED_ADMIN_PASSWORD", "Admin@12345"),
 		SeedAdminName:           env("SEED_ADMIN_NAME", "Quản trị hệ thống"),
 	}
+	// Mặc định bật ở mọi môi trường trừ production; SEED_SAMPLE_SUBJECTS ghi đè
+	// tường minh để bật/tắt theo ý muốn (kể cả bật ở production khi cần).
+	cfg.SeedSampleSubjects = envBool("SEED_SAMPLE_SUBJECTS", cfg.Env != "production")
 
 	if cfg.JWTSecret == "" {
 		if cfg.Env == "production" {
@@ -109,4 +126,16 @@ func envDuration(key string, fallback time.Duration) time.Duration {
 		return time.Duration(hours) * time.Hour
 	}
 	return fallback
+}
+
+func envBool(key string, fallback bool) bool {
+	raw := env(key, "")
+	if raw == "" {
+		return fallback
+	}
+	b, err := strconv.ParseBool(raw)
+	if err != nil {
+		return fallback
+	}
+	return b
 }

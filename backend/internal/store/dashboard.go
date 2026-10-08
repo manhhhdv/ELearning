@@ -125,3 +125,78 @@ func (s *Store) DashboardStats(ctx context.Context) (*DashboardStats, error) {
 	}
 	return out, userRows.Err()
 }
+
+// TrainerAnalytics gom số liệu học tập trong phạm vi các môn học mà giáo viên
+// này phụ trách (tạo ra hoặc được ghi danh với vai trò giáo viên) — không lộ
+// số liệu của môn học khác, khác với DashboardStats dành cho admin/giám sát.
+func (s *Store) TrainerAnalytics(ctx context.Context, trainerID uuid.UUID) (*DashboardStats, error) {
+	out := &DashboardStats{TopPrograms: []*DashboardProgram{}, RecentSignups: []*DashboardUser{}}
+
+	const myPrograms = `
+		SELECT p.id FROM programs p
+		WHERE p.created_by = $1
+		   OR EXISTS (SELECT 1 FROM enrollments e WHERE e.program_id = p.id AND e.user_id = $1 AND e.role = 'trainer')`
+
+	err := s.pool.QueryRow(ctx, `
+		SELECT
+			count(*),
+			count(*) FILTER (WHERE status = 'draft'),
+			count(*) FILTER (WHERE status = 'published'),
+			count(*) FILTER (WHERE status = 'archived')
+		FROM programs p WHERE p.id IN (`+myPrograms+`)`, trainerID).
+		Scan(&out.ProgramsTotal, &out.ProgramsDraft, &out.ProgramsPublished, &out.ProgramsArchived)
+	if err != nil {
+		return nil, translate(err, "đếm chương trình")
+	}
+
+	if err := s.pool.QueryRow(ctx, `
+		SELECT count(*) FROM enrollments e
+		WHERE e.role = 'student' AND e.program_id IN (`+myPrograms+`)`, trainerID).
+		Scan(&out.EnrollmentsTotal); err != nil {
+		return nil, translate(err, "đếm ghi danh")
+	}
+
+	err = s.pool.QueryRow(ctx, `
+		SELECT count(*), count(*) FILTER (WHERE sub.status = 'submitted')
+		FROM submissions sub
+		JOIN assignments a ON a.node_id = sub.assignment_id
+		JOIN nodes n ON n.id = a.node_id
+		WHERE n.program_id IN (`+myPrograms+`)`, trainerID).
+		Scan(&out.SubmissionsTotal, &out.SubmissionsPending)
+	if err != nil {
+		return nil, translate(err, "đếm bài nộp")
+	}
+
+	if err := s.pool.QueryRow(ctx, `
+		SELECT count(*) FROM lesson_progress lp
+		JOIN nodes n ON n.id = lp.node_id
+		WHERE n.program_id IN (`+myPrograms+`)`, trainerID).
+		Scan(&out.LessonsCompleted); err != nil {
+		return nil, translate(err, "đếm tiến độ học")
+	}
+
+	progRows, err := s.pool.Query(ctx, `
+		SELECT p.id, p.slug, p.title, p.code, p.status,
+		       (SELECT count(*) FROM enrollments e WHERE e.program_id = p.id AND e.role = 'student') AS ec
+		FROM programs p
+		WHERE p.id IN (`+myPrograms+`)
+		ORDER BY ec DESC, p.updated_at DESC
+		LIMIT 5`, trainerID)
+	if err != nil {
+		return nil, translate(err, "xếp hạng chương trình")
+	}
+	for progRows.Next() {
+		var dp DashboardProgram
+		if err := progRows.Scan(&dp.ID, &dp.Slug, &dp.Title, &dp.Code, &dp.Status, &dp.EnrollmentCount); err != nil {
+			progRows.Close()
+			return nil, translate(err, "xếp hạng chương trình")
+		}
+		out.TopPrograms = append(out.TopPrograms, &dp)
+	}
+	progRows.Close()
+	if err := progRows.Err(); err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}

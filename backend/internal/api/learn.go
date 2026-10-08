@@ -53,7 +53,7 @@ func (s *Server) handleEnroll(w http.ResponseWriter, r *http.Request) {
 		req.Role = models.RoleStudent
 	}
 	if req.Role != models.RoleStudent && req.Role != models.RoleTrainer {
-		writeError(w, http.StatusBadRequest, "Vai trò ghi danh chỉ có thể là học viên hoặc giảng viên")
+		writeError(w, http.StatusBadRequest, "Vai trò ghi danh chỉ có thể là học sinh hoặc giáo viên")
 		return
 	}
 	if len(req.UserIDs) == 0 {
@@ -95,7 +95,7 @@ func (s *Server) handleUnenroll(w http.ResponseWriter, r *http.Request) {
 }
 
 // ---------------------------------------------------------------------------
-// Khu vực học viên
+// Khu vực học sinh
 // ---------------------------------------------------------------------------
 
 func (s *Server) handleMyPrograms(w http.ResponseWriter, r *http.Request) {
@@ -112,7 +112,7 @@ func (s *Server) handleMyPrograms(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, programs)
 }
 
-// handleCatalog liệt kê các khoá đang mở cho học viên tự ghi danh.
+// handleCatalog liệt kê các lớp đang mở cho học sinh tự ghi danh.
 func (s *Server) handleCatalog(w http.ResponseWriter, r *http.Request) {
 	claims, _ := auth.FromContext(r.Context())
 	programs, err := s.store.ListPrograms(r.Context(), store.ListProgramsFilter{
@@ -128,7 +128,7 @@ func (s *Server) handleCatalog(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, programs)
 }
 
-// handleSelfEnroll cho học viên tự ghi danh vào khoá đã bật tuỳ chọn này.
+// handleSelfEnroll cho học sinh tự ghi danh vào lớp đã bật tuỳ chọn này.
 func (s *Server) handleSelfEnroll(w http.ResponseWriter, r *http.Request) {
 	programID, ok := urlUUID(w, r, "programID")
 	if !ok {
@@ -140,11 +140,11 @@ func (s *Server) handleSelfEnroll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !program.AllowSelfEnroll {
-		writeError(w, http.StatusForbidden, "Khoá học này không cho tự ghi danh, vui lòng liên hệ quản trị viên")
+		writeError(w, http.StatusForbidden, "Lớp học này không cho tự ghi danh, vui lòng liên hệ quản trị viên")
 		return
 	}
 	if program.Status != "published" {
-		writeError(w, http.StatusForbidden, "Khoá học này chưa được mở")
+		writeError(w, http.StatusForbidden, "Lớp học này chưa được mở")
 		return
 	}
 
@@ -162,7 +162,7 @@ func (s *Server) handleSelfEnroll(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, enrolled)
 }
 
-// handleSelfUnenroll cho học viên tự rời khoá mình đã tự ghi danh.
+// handleSelfUnenroll cho học sinh tự rời lớp mình đã tự ghi danh.
 func (s *Server) handleSelfUnenroll(w http.ResponseWriter, r *http.Request) {
 	programID, ok := urlUUID(w, r, "programID")
 	if !ok {
@@ -173,15 +173,15 @@ func (s *Server) handleSelfUnenroll(w http.ResponseWriter, r *http.Request) {
 		writeStoreError(w, err, "Không tìm thấy chương trình")
 		return
 	}
-	// Khoá do admin xếp lớp thì học viên không được tự rút.
+	// Khoá do admin xếp lớp thì học sinh không được tự rút.
 	if !program.AllowSelfEnroll {
-		writeError(w, http.StatusForbidden, "Khoá học này do quản trị viên xếp, bạn không thể tự rời")
+		writeError(w, http.StatusForbidden, "Lớp học này do quản trị viên xếp, bạn không thể tự rời")
 		return
 	}
 
 	claims, _ := auth.FromContext(r.Context())
 	if err := s.store.Unenroll(r.Context(), programID, claims.UserID); err != nil {
-		writeStoreError(w, err, "Bạn chưa ghi danh khoá này")
+		writeStoreError(w, err, "Bạn chưa ghi danh lớp này")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -218,11 +218,11 @@ type attemptResponse struct {
 	AttemptsUsed int                  `json:"attemptsUsed"`
 	MaxAttempts  int                  `json:"maxAttempts"`
 	Submissions  []*models.Submission `json:"submissions"`
-	// Lượt đang làm dở, nil khi học viên chưa bấm bắt đầu.
+	// Lượt đang làm dở, nil khi học sinh chưa bấm bắt đầu.
 	Session *store.AttemptSession `json:"session"`
 }
 
-// handleGetAttempt trả về đề bài cho học viên (đã ẩn đáp án) kèm lịch sử làm bài.
+// handleGetAttempt trả về đề bài cho học sinh (đã ẩn đáp án) kèm lịch sử làm bài.
 func (s *Server) handleGetAttempt(w http.ResponseWriter, r *http.Request) {
 	nodeID, ok := urlUUID(w, r, "nodeID")
 	if !ok {
@@ -262,7 +262,7 @@ func (s *Server) handleGetAttempt(w http.ResponseWriter, r *http.Request) {
 		writeStoreError(w, err, "")
 		return
 	}
-	// Phiên đã quá giờ coi như không còn: giao diện sẽ mời học viên bắt đầu lượt mới.
+	// Phiên đã quá giờ coi như không còn: giao diện sẽ mời học sinh bắt đầu lượt mới.
 	if session != nil && session.Expired(time.Now()) {
 		session = nil
 	}
@@ -387,7 +387,7 @@ func (s *Server) handleSubmitAssignment(w http.ResponseWriter, r *http.Request) 
 		writeStoreError(w, err, "Không tìm thấy bài tập")
 		return
 	}
-	// Bài chưa chấm xong thì chưa cho học viên thấy điểm từng câu.
+	// Bài chưa chấm xong thì chưa cho học sinh thấy điểm từng câu.
 	writeJSON(w, http.StatusCreated, submission)
 }
 
@@ -465,13 +465,16 @@ func (s *Server) handleGetSubmission(w http.ResponseWriter, r *http.Request) {
 		writeStoreError(w, err, "")
 		return
 	}
-	// Học viên chỉ thấy đáp án đúng sau khi bài đã được chấm xong; người xem có
+	// Học sinh chỉ thấy đáp án đúng sau khi bài đã được chấm xong; người xem có
 	// quyền quản lý hoặc giám sát thì thấy ngay, không phải chờ chấm.
-	if !canReview && submission.Status != "graded" {
-		for _, q := range questions {
-			q.Explanation = ""
-			for _, o := range q.Options {
-				o.IsCorrect = false
+	if !canReview {
+		if submission.Status != "graded" {
+			stripQuestionAnswers(questions)
+		} else {
+			// Bài đã chấm: học sinh được xem đáp án gợi ý để tự rút kinh nghiệm,
+			// nhưng tiêu chí chấm là công cụ nội bộ của giáo viên nên luôn bị gỡ.
+			for _, q := range questions {
+				q.Rubric = ""
 			}
 		}
 	}

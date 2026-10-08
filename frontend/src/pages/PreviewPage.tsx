@@ -10,7 +10,7 @@ import { RichContent } from '../components/RichContent'
 import { LessonAttachments, Loading } from '../components/ui'
 
 /**
- * Xem trước nội dung đúng như học viên sẽ thấy, nhưng dùng dữ liệu của người
+ * Xem trước nội dung đúng như học sinh sẽ thấy, nhưng dùng dữ liệu của người
  * quản lý (thấy cả bài chưa xuất bản, đáp án đúng) và không ghi lại bất kỳ
  * hành động nào — không có nút hoàn thành, không nộp bài thật.
  */
@@ -219,7 +219,7 @@ function PreviewQuestion({ question, index }: { question: Question; index: numbe
 
       {question.type === 'essay' ? (
         <div className="essay-answer" style={{ color: 'var(--c-muted)', fontStyle: 'italic' }}>
-          Học viên sẽ nhập câu trả lời tự luận tại đây.
+          Học sinh sẽ nhập câu trả lời tự luận tại đây.
         </div>
       ) : (
         question.options.map((o) => (

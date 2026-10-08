@@ -45,11 +45,11 @@ export function ProgramsPage() {
   return (
     <>
       <PageHeader
-        title="Chương trình đào tạo"
-        subtitle={readOnly ? 'Xem danh sách chương trình đào tạo (chế độ Giám sát)' : 'Tạo và sắp xếp nội dung đào tạo theo cấu trúc cây'}
+        title="Lớp học"
+        subtitle={readOnly ? 'Xem danh sách lớp học (chế độ Giám sát)' : 'Tạo và sắp xếp nội dung đào tạo theo cấu trúc cây'}
         actions={!readOnly && (
           <button className="btn btn-primary" onClick={() => setCreating(true)}>
-            <IconPlus /> Chương trình mới
+            <IconPlus /> Lớp học mới
           </button>
         )}
       />
@@ -59,7 +59,7 @@ export function ProgramsPage() {
           <input
             className="grow"
             type="text"
-            placeholder="Tìm theo tên hoặc mã chương trình…"
+            placeholder="Tìm theo tên hoặc mã lớp học…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -69,8 +69,8 @@ export function ProgramsPage() {
 
         {loading ? <Loading /> : programs.length === 0 ? (
           <div className="card">
-            <EmptyState title="Chưa có chương trình nào">
-              <p>Bấm “Chương trình mới” để tạo chương trình đào tạo đầu tiên.</p>
+            <EmptyState title="Chưa có lớp học nào">
+              <p>Bấm “Lớp học mới” để tạo lớp học đầu tiên.</p>
             </EmptyState>
           </div>
         ) : (
@@ -79,10 +79,10 @@ export function ProgramsPage() {
               <thead>
                 <tr>
                   <th>Mã</th>
-                  <th>Tên chương trình</th>
+                  <th>Tên lớp học</th>
                   <th>Trạng thái</th>
                   <th>Nội dung</th>
-                  <th>Học viên</th>
+                  <th>Học sinh</th>
                   <th>Cập nhật</th>
                 </tr>
               </thead>
@@ -145,20 +145,20 @@ function CreateProgramModal({
         code: code.trim(), title: title.trim(), description, status, allowSelfEnroll, isDefaultCourse,
       }))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tạo được chương trình')
+      setError(err instanceof Error ? err.message : 'Không tạo được lớp học')
       setBusy(false)
     }
   }
 
   return (
     <Modal
-      title="Chương trình đào tạo mới"
+      title="Lớp học mới"
       onClose={onClose}
       footer={
         <>
           <button className="btn" onClick={onClose}>Huỷ</button>
           <button className="btn btn-primary" form="create-program" disabled={busy}>
-            {busy ? 'Đang tạo…' : 'Tạo chương trình'}
+            {busy ? 'Đang tạo…' : 'Tạo lớp học'}
           </button>
         </>
       }
@@ -166,7 +166,7 @@ function CreateProgramModal({
       <ErrorAlert message={error} />
       <form id="create-program" onSubmit={submit}>
         <div className="field">
-          <label htmlFor="p-code">Mã chương trình</label>
+          <label htmlFor="p-code">Mã lớp học</label>
           <input
             id="p-code" type="text" value={code}
             onChange={(e) => setCode(e.target.value)}
@@ -175,7 +175,7 @@ function CreateProgramModal({
           <div className="hint">Mã không trùng nhau, dùng để tra cứu nhanh.</div>
         </div>
         <div className="field">
-          <label htmlFor="p-title">Tên chương trình</label>
+          <label htmlFor="p-title">Tên lớp học</label>
           <input
             id="p-title" type="text" value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -190,7 +190,7 @@ function CreateProgramModal({
           <label htmlFor="p-status">Trạng thái</label>
           <select id="p-status" value={status} onChange={(e) => setStatus(e.target.value as ProgramStatus)}>
             <option value="draft">Bản nháp — chỉ người quản lý thấy</option>
-            <option value="published">Đã xuất bản — học viên được ghi danh sẽ thấy</option>
+            <option value="published">Đã xuất bản — học sinh được ghi danh sẽ thấy</option>
             <option value="archived">Lưu trữ</option>
           </select>
         </div>
@@ -199,10 +199,10 @@ function CreateProgramModal({
             type="checkbox" checked={allowSelfEnroll}
             onChange={(e) => setAllowSelfEnroll(e.target.checked)}
           />
-          Cho học viên tự ghi danh
+          Cho học sinh tự ghi danh
         </label>
         <div className="hint">
-          Bật thì khoá học xuất hiện ở mục “Khám phá khoá học”, học viên tự bấm đăng ký.
+          Bật thì lớp học xuất hiện ở mục “Khám phá lớp học”, học sinh tự bấm đăng ký.
         </div>
 
         {user?.role === 'admin' && (
@@ -212,10 +212,10 @@ function CreateProgramModal({
                 type="checkbox" checked={isDefaultCourse}
                 onChange={(e) => setIsDefaultCourse(e.target.checked)}
               />
-              Khoá học mặc định
+              Lớp học mặc định
             </label>
             <div className="hint">
-              Tự động hiện trong “Khoá học của tôi” của <b>mọi người dùng</b> ngay khi xuất bản, không
+              Tự động hiện trong “Lớp học của tôi” của <b>mọi người dùng</b> ngay khi xuất bản, không
               cần ghi danh. Dùng cho nội dung bắt buộc như định hướng nhân viên mới. Chỉ admin đặt được.
             </div>
           </div>

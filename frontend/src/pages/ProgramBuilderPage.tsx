@@ -1,18 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
+import { useAIStatus } from '../api/useAIStatus'
+import { GenerateLessonModal } from '../components/GenerateLessonModal'
 import { api } from '../api/client'
 import type { Enrollment, Program, ProgramStatus, TreeNode, User } from '../api/types'
 import { CONTENT_TYPE_LABEL, ROLE_LABEL, STATUS_LABEL } from '../api/types'
 import { isReadOnlyViewer, useAuth } from '../auth'
+import { COURSE_COVERS, courseCover } from '../components/CourseTile'
 import { PageHeader } from '../components/Layout'
+import { GradebookPanel } from '../components/GradebookPanel'
 import { ImportStructureModal } from '../components/ImportStructureModal'
 import { NodeEditor } from '../components/NodeEditor'
 import { ProgramTree } from '../components/ProgramTree'
-import { IconEye, IconPlus, IconUpload } from '../components/icons'
+import { IconDownload, IconEye, IconPlus, IconUpload, IconSparkles } from '../components/icons'
 import { EmptyState, ErrorAlert, Loading, Modal, formatDate } from '../components/ui'
 
-type Tab = 'content' | 'learners' | 'settings'
+type Tab = 'content' | 'learners' | 'scores' | 'settings'
 
 export function ProgramBuilderPage() {
   const { programSlug = '' } = useParams()
@@ -25,8 +29,11 @@ export function ProgramBuilderPage() {
   const [selected, setSelected] = useState<TreeNode | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const ai = useAIStatus()
+  const [generatingLesson, setGeneratingLesson] = useState(false)
   const [adding, setAdding] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   // ID nội bộ, tra một lần từ slug trên URL rồi dùng lại cho mọi lời gọi API.
   const programId = program?.id ?? ''
@@ -51,7 +58,7 @@ export function ProgramBuilderPage() {
         setTree(await api.getTree(p.id))
         setError(null)
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Không tải được chương trình'))
+      .catch((err) => setError(err instanceof Error ? err.message : 'Không tải được lớp học'))
       .finally(() => setLoading(false))
   }, [programSlug])
 
@@ -61,6 +68,19 @@ export function ProgramBuilderPage() {
       setSelected(await api.getNode(node.id))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không mở được nội dung')
+    }
+  }
+
+  /** Tải toàn bộ bài giảng và đề của lớp học về dạng Word, gói trong một tệp .zip. */
+  const exportAll = async () => {
+    setExporting(true)
+    setError(null)
+    try {
+      await api.exportProgram(programId)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không xuất được lớp học')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -75,7 +95,7 @@ export function ProgramBuilderPage() {
   }
 
   if (loading) return <Loading />
-  if (!program) return <div className="page-body"><ErrorAlert message={error ?? 'Không tìm thấy chương trình'} /></div>
+  if (!program) return <div className="page-body"><ErrorAlert message={error ?? 'Không tìm thấy lớp học'} /></div>
 
   return (
     <>
@@ -88,11 +108,18 @@ export function ProgramBuilderPage() {
             <Link className="btn" to={`/xem-truoc/${program.slug}`} target="_blank" rel="noreferrer">
               <IconEye /> Xem trước
             </Link>
+            <button
+              className="btn" onClick={exportAll} disabled={exporting}
+              title="Tải mọi bài giảng và đề (kèm bản có đáp án) dạng Word, gói trong một tệp .zip"
+            >
+              <IconDownload /> {exporting ? 'Đang đóng gói…' : 'Xuất toàn bộ'}
+            </button>
             {!readOnly && (
               <button className="btn" onClick={() => setImporting(true)}>
                 <IconUpload /> Nhập từ file
               </button>
             )}
+            {!readOnly && ai?.enabled && <button className="btn" onClick={() => setGeneratingLesson(true)}><IconSparkles /> Tạo bài giảng AI</button>}
             {!readOnly && (
               <button className="btn btn-primary" onClick={() => setAdding(true)}>
                 <IconPlus /> Thêm nội dung
@@ -105,7 +132,8 @@ export function ProgramBuilderPage() {
       <div className="page-body">
         <div className="toolbar">
           <button className={`btn ${tab === 'content' ? 'btn-primary' : ''}`} onClick={() => setTab('content')}>Nội dung</button>
-          <button className={`btn ${tab === 'learners' ? 'btn-primary' : ''}`} onClick={() => setTab('learners')}>Học viên</button>
+          <button className={`btn ${tab === 'learners' ? 'btn-primary' : ''}`} onClick={() => setTab('learners')}>Học sinh</button>
+          <button className={`btn ${tab === 'scores' ? 'btn-primary' : ''}`} onClick={() => setTab('scores')}>Thống kê điểm</button>
           <button className={`btn ${tab === 'settings' ? 'btn-primary' : ''}`} onClick={() => setTab('settings')}>Cài đặt</button>
         </div>
 
@@ -115,7 +143,7 @@ export function ProgramBuilderPage() {
           <div className="builder">
             <div className="card tree-panel">
               <div className="tree-panel-head">
-                <b>Cấu trúc chương trình</b>
+                <b>Cấu trúc lớp học</b>
                 {!readOnly && <span className="tiny faint">kéo để sắp xếp</span>}
               </div>
               <ProgramTree
@@ -150,9 +178,16 @@ export function ProgramBuilderPage() {
         )}
 
         {tab === 'learners' && <LearnersTab programId={programId} readOnly={readOnly} />}
+        {tab === 'scores' && <GradebookPanel programId={programId} programCode={program.code} />}
         {tab === 'settings' && <SettingsTab program={program} onUpdated={setProgram} readOnly={readOnly} />}
       </div>
 
+      {generatingLesson && <GenerateLessonModal
+        programId={programId} folders={folderOptions(tree)}
+        defaultParentId={selected?.kind === 'folder' ? selected.id : selected?.parentId ?? null}
+        onClose={() => setGeneratingLesson(false)}
+        onCreated={(node) => { setGeneratingLesson(false); setTab('content'); setSelected(node); void loadTree(node.id).catch((err) => setError(err.message)) }}
+      />}
       {importing && (
         <ImportStructureModal
           programId={programId}
@@ -359,7 +394,7 @@ function LearnersTab({ programId, readOnly }: { programId: string; readOnly: boo
   useEffect(() => { load() }, [load])
 
   const remove = async (userId: string, name: string) => {
-    if (!confirm(`Gỡ ${name} khỏi chương trình?`)) return
+    if (!confirm(`Gỡ ${name} khỏi lớp học?`)) return
     await api.unenroll(programId, userId)
     await load()
   }
@@ -380,7 +415,7 @@ function LearnersTab({ programId, readOnly }: { programId: string; readOnly: boo
       <div className="card">
         {enrollments.length === 0 ? (
           <EmptyState title="Chưa có ai được ghi danh">
-            <p>Ghi danh học viên để họ nhìn thấy chương trình này.</p>
+            <p>Ghi danh học sinh để họ nhìn thấy lớp học này.</p>
           </EmptyState>
         ) : (
           <table>
@@ -394,7 +429,7 @@ function LearnersTab({ programId, readOnly }: { programId: string; readOnly: boo
                   <td className="muted">{e.email}</td>
                   <td>
                     <span className={`badge ${e.role === 'trainer' ? 'badge-primary' : ''}`}>
-                      {e.role === 'trainer' ? 'Giảng viên' : 'Học viên'}
+                      {e.role === 'trainer' ? 'Giáo viên' : 'Học sinh'}
                     </span>
                   </td>
                   <td className="tiny muted">{formatDate(e.enrolledAt)}</td>
@@ -470,7 +505,7 @@ function EnrollModal({
 
   return (
     <Modal
-      title="Ghi danh vào chương trình"
+      title="Ghi danh vào lớp học"
       onClose={onClose}
       wide
       footer={
@@ -484,10 +519,10 @@ function EnrollModal({
     >
       <ErrorAlert message={error} />
       <div className="field">
-        <label>Vai trò trong chương trình</label>
+        <label>Vai trò trong lớp học</label>
         <select value={role} onChange={(e) => setRole(e.target.value as 'student' | 'trainer')}>
-          <option value="student">Học viên — chỉ học và làm bài</option>
-          <option value="trainer">Giảng viên — sửa nội dung và chấm bài</option>
+          <option value="student">Học sinh — chỉ học và làm bài</option>
+          <option value="trainer">Giáo viên — sửa nội dung và chấm bài</option>
         </select>
       </div>
       <div className="field">
@@ -578,7 +613,7 @@ function SettingsTab({
         </div>
       </div>
       <div className="field">
-        <label htmlFor="s-title">Tên chương trình</label>
+        <label htmlFor="s-title">Tên lớp học</label>
         <input id="s-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} required />
       </div>
       <div className="field">
@@ -593,18 +628,15 @@ function SettingsTab({
           placeholder="https://…/anh-bia.jpg"
         />
         <div className="hint">
-          Dán link ảnh hiển thị trên thẻ khoá học. Để trống thì hệ thống dùng dải màu suy từ mã khoá.
+          Chọn ảnh minh họa bên dưới hoặc dán link ảnh riêng. Để trống để chọn bìa tự động theo mã lớp học.
         </div>
-        {coverUrl.trim() && (
-          <img
-            src={coverUrl}
-            alt="Xem trước ảnh bìa"
-            style={{
-              marginTop: 10, width: '100%', maxWidth: 320, aspectRatio: '16 / 9',
-              objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)',
-            }}
-          />
-        )}
+        <div className="cover-picker" role="group" aria-label="Chọn ảnh bìa lớp học">
+          <button type="button" className={!coverUrl ? 'selected' : ''} aria-pressed={!coverUrl} onClick={() => setCoverUrl('')}>Tự động</button>
+          {COURSE_COVERS.map((cover) => <button key={cover.id} type="button" className={coverUrl === cover.url ? 'selected' : ''} aria-pressed={coverUrl === cover.url} onClick={() => setCoverUrl(cover.url)}>
+            <img src={cover.url} alt="" loading="lazy" /><span>{cover.label}</span>
+          </button>)}
+        </div>
+        <div className="cover-preview" role="img" aria-label="Xem trước ảnh bìa lớp học" style={courseCover({ code: program.code, coverUrl })} />
       </div>
       <div className="field">
         <label className="checkbox">
@@ -612,11 +644,11 @@ function SettingsTab({
             type="checkbox" checked={allowSelfEnroll}
             onChange={(e) => setAllowSelfEnroll(e.target.checked)}
           />
-          Cho học viên tự ghi danh
+          Cho học sinh tự ghi danh
         </label>
         <div className="hint">
-          Bật thì khoá xuất hiện ở mục “Khám phá khoá học” để học viên tự đăng ký, và họ cũng tự rời
-          được. Tắt thì chỉ quản trị viên hoặc giảng viên mới thêm được người vào khoá.
+          Bật thì lớp xuất hiện ở mục “Khám phá lớp học” để học sinh tự đăng ký, và họ cũng tự rời
+          được. Tắt thì chỉ quản trị viên hoặc giáo viên mới thêm được người vào lớp.
         </div>
       </div>
 
@@ -627,10 +659,10 @@ function SettingsTab({
               type="checkbox" checked={isDefaultCourse}
               onChange={(e) => setIsDefaultCourse(e.target.checked)}
             />
-            Khoá học mặc định
+            Lớp học mặc định
           </label>
           <div className="hint">
-            Tự động hiện trong “Khoá học của tôi” của <b>mọi người dùng</b> ngay khi xuất bản, không
+            Tự động hiện trong “Lớp học của tôi” của <b>mọi người dùng</b> ngay khi xuất bản, không
             cần ghi danh — dùng cho nội dung bắt buộc như định hướng nhân viên mới. Chỉ admin đặt được.
           </div>
         </div>

@@ -48,7 +48,7 @@ export function MyResultsPage() {
               <table className="ltable">
                 <thead>
                   <tr>
-                    <th>Bài tập</th><th>Khoá học</th><th>Lượt</th>
+                    <th>Bài tập</th><th>Lớp học</th><th>Lượt</th>
                     <th>Nộp lúc</th><th>Điểm</th><th>Trạng thái</th><th />
                   </tr>
                 </thead>
@@ -65,6 +65,10 @@ export function MyResultsPage() {
                         <td>
                           <b>{formatScore(total)}</b>
                           <span style={{ color: 'var(--c-muted)' }}> / {formatScore(s.maxScore)}</span>
+                          {/* Bài chưa chấm xong mới chỉ có điểm trắc nghiệm. */}
+                          {s.status !== 'graded' && (
+                            <div className="tiny muted">tạm tính</div>
+                          )}
                           {s.status === 'graded' && (
                             <div style={{ fontSize: 12.5, color: 'var(--c-muted)' }}>{percent}%</div>
                           )}
